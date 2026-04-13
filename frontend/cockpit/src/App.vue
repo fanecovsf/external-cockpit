@@ -1,5 +1,37 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import { onMounted, onUnmounted } from "vue";
+import {
+  connectTelemetry,
+  disconnectTelemetry,
+} from "./services/telemetrySocket";
+
+const altitudeAnimFrame = ref(null);
+const speedAnimFrame = ref(null);
+
+const handleTelemetry = (data) => {
+  if (data.schema == "telemetry") {
+    if (data.altitude !== undefined) {
+      telemetryAltitude.value = data.altitude;
+    }
+
+    if (data.speed !== undefined) {
+      telemetrySpeed.value = data.speed;
+    }
+
+    if (data.fuel !== undefined) {
+      fuel.value = data.fuel;
+    }
+  }
+};
+
+onMounted(() => {
+  connectTelemetry(handleTelemetry);
+});
+
+onUnmounted(() => {
+  disconnectTelemetry();
+});
 
 // ================= ALTITUDE CONTROL =================
 
@@ -143,30 +175,45 @@ const landingLocked = computed(() => {
 const displayAltitude = ref(telemetryAltitude.value);
 const displaySpeed = ref(telemetrySpeed.value);
 
-const animateValue = (current, target, setter, speed = 0.08) => {
+const animateValue = (current, target, setter, frameRef, speed = 0.08) => {
+  if (frameRef.value) {
+    cancelAnimationFrame(frameRef.value);
+  }
+
   const step = () => {
     const diff = target - current.value;
 
     if (Math.abs(diff) < 0.1) {
       setter(target);
+      frameRef.value = null;
       return;
     }
 
     current.value += diff * speed;
     setter(current.value);
 
-    requestAnimationFrame(step);
+    frameRef.value = requestAnimationFrame(step);
   };
 
   step();
 };
 
 watch(telemetryAltitude, (newVal) => {
-  animateValue(displayAltitude, newVal, (v) => (displayAltitude.value = v));
+  animateValue(
+    displayAltitude,
+    newVal,
+    (v) => (displayAltitude.value = v),
+    altitudeAnimFrame,
+  );
 });
 
 watch(telemetrySpeed, (newVal) => {
-  animateValue(displaySpeed, newVal, (v) => (displaySpeed.value = v));
+  animateValue(
+    displaySpeed,
+    newVal,
+    (v) => (displaySpeed.value = v),
+    speedAnimFrame,
+  );
 });
 </script>
 <template>
