@@ -36,6 +36,12 @@ local fuel = 88000
 local targetAltitude = 0
 local targetSpeed = 0
 
+local pitch = 0
+local roll = 0
+
+local targetPitch = 0
+local targetRoll = 0
+
 -- =========================
 -- HELPERS
 -- =========================
@@ -57,11 +63,19 @@ while true do
   if math.random() < 0.1 then
     targetAltitude = randomRange(0, 300)
     targetSpeed = randomRange(0, 200)
+
+    -- pitch acompanha subida/descida
+    targetPitch = (targetAltitude - altitude) * 0.01
+
+      -- roll aleatório (leve inclinação)
+    targetRoll = randomRange(-0.5, 0.5)
   end
 
   -- suavização
   altitude = lerp(altitude, targetAltitude, 0.08)
   speed = lerp(speed, targetSpeed, 0.1)
+  pitch = lerp(pitch, targetPitch, 0.08)
+  roll = lerp(roll, targetRoll, 0.08)
 
   -- consumo combustível
   fuel = fuel - (speed * 0.05)
@@ -72,7 +86,9 @@ while true do
     schema = "telemetry",
     altitude = math.floor(altitude),
     speed = tonumber(string.format("%.1f", speed)),
-    fuel = tonumber(string.format("%.2f", fuel))
+    fuel = tonumber(string.format("%.2f", fuel)),
+    pitch = tonumber(string.format("%.2f", pitch)),
+    roll = tonumber(string.format("%.2f", roll))
   }
 
   local message = json.encode(payload)
@@ -97,5 +113,5 @@ while true do
     print("Enviado:", message)
   end
 
-  socket.sleep(0.5)
+  socket.sleep(0.1)
 end

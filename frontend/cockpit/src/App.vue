@@ -5,9 +5,12 @@ import {
   connectTelemetry,
   disconnectTelemetry,
 } from "./services/telemetrySocket";
+import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 
 const altitudeAnimFrame = ref(null);
 const speedAnimFrame = ref(null);
+const telemetryPitch = ref(0);
+const telemetryRoll = ref(0);
 
 const handleTelemetry = (data) => {
   if (data.schema == "telemetry") {
@@ -21,6 +24,14 @@ const handleTelemetry = (data) => {
 
     if (data.fuel !== undefined) {
       fuel.value = data.fuel;
+    }
+
+    if (data.pitch !== undefined) {
+      telemetryPitch.value = data.pitch;
+    }
+
+    if (data.roll !== undefined) {
+      telemetryRoll.value = data.roll;
     }
   }
 };
@@ -288,6 +299,10 @@ watch(telemetrySpeed, (newVal) => {
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="horizon-wrapper">
+        <ArtificialHorizon :pitch="telemetryPitch" :roll="telemetryRoll" />
       </div>
     </div>
 
@@ -930,5 +945,12 @@ watch(telemetrySpeed, (newVal) => {
   box-shadow:
     0 2px 0 #300,
     inset 0 0 6px #ff444444;
+}
+
+.horizon-wrapper {
+  position: absolute;
+  left: 50%;
+  top: 400%;
+  transform: translate(-50%, -50%);
 }
 </style>

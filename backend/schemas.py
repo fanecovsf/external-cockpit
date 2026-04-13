@@ -14,3 +14,5 @@ class TelemetryDataSchema(Schema):
     altitude = fields.Integer(required=True)
     speed = fields.Float(required=True)
     fuel = fields.Float(required=True)
+    pitch = fields.Float(required=True)
+    roll = fields.Float(required=True)
