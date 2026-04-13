@@ -12,6 +12,6 @@ class AutoPilotAltitudeSchema(Schema):
 class TelemetryDataSchema(Schema):
     schema = fields.Str(required=True)
     altitude = fields.Integer(required=True)
-    speed = fields.Integer(required=True)
+    speed = fields.Float(required=True)
     pitch = fields.Float(required=True)
     roll = fields.Float(required=True)
