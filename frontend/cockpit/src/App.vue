@@ -139,6 +139,35 @@ const takeOffLocked = computed(() => {
 const landingLocked = computed(() => {
   return telemetryAltitude.value <= 140;
 });
+
+const displayAltitude = ref(telemetryAltitude.value);
+const displaySpeed = ref(telemetrySpeed.value);
+
+const animateValue = (current, target, setter, speed = 0.08) => {
+  const step = () => {
+    const diff = target - current.value;
+
+    if (Math.abs(diff) < 0.1) {
+      setter(target);
+      return;
+    }
+
+    current.value += diff * speed;
+    setter(current.value);
+
+    requestAnimationFrame(step);
+  };
+
+  step();
+};
+
+watch(telemetryAltitude, (newVal) => {
+  animateValue(displayAltitude, newVal, (v) => (displayAltitude.value = v));
+});
+
+watch(telemetrySpeed, (newVal) => {
+  animateValue(displaySpeed, newVal, (v) => (displaySpeed.value = v));
+});
 </script>
 <template>
   <div class="cockpit">
@@ -170,7 +199,7 @@ const landingLocked = computed(() => {
         <div class="inst-digits">
           <div
             class="inst-digit"
-            v-for="(d, i) in getDigits(telemetryAltitude)"
+            v-for="(d, i) in getDigits(displayAltitude)"
             :key="'alt-' + i"
           >
             <span class="inst-faded">{{ (d + 1) % 10 }}</span>
@@ -186,7 +215,7 @@ const landingLocked = computed(() => {
           <!-- parte inteira -->
           <div
             class="inst-digit"
-            v-for="(d, i) in getDigits(telemetrySpeed)"
+            v-for="(d, i) in getDigits(displaySpeed)"
             :key="'spd-' + i"
           >
             <span class="inst-faded">{{ (d + 1) % 10 }}</span>
@@ -198,11 +227,11 @@ const landingLocked = computed(() => {
             <span class="inst-dot">.</span>
             <div class="inst-digit small">
               <span class="inst-faded">{{
-                (getDecimal(telemetrySpeed) + 1) % 10
+                (getDecimal(displaySpeed) + 1) % 10
               }}</span>
-              <span class="inst-active">{{ getDecimal(telemetrySpeed) }}</span>
+              <span class="inst-active">{{ getDecimal(displaySpeed) }}</span>
               <span class="inst-faded">{{
-                (getDecimal(telemetrySpeed) + 9) % 10
+                (getDecimal(displaySpeed) + 9) % 10
               }}</span>
             </div>
           </div>
