@@ -127,7 +127,7 @@ watch(telemetryAltitude, (val) => {
 
 // Auto Pilot bloqueado se não pode ativar
 const autoPilotLocked = computed(() => {
-  return !autoPilot.value && altitude.value <= 140;
+  return telemetryAltitude.value <= 140;
 });
 
 // TakeOff bloqueado se não pode armar
@@ -186,7 +186,12 @@ watch(telemetrySpeed, (newVal) => {
           ></div>
           <div class="tick" v-for="n in 30" :key="n"></div>
         </div>
-        <button class="toggle" :class="{ active: isActive }" @click="toggle">
+        <button
+          class="toggle mode-btn"
+          :class="{ locked: autoPilotLocked }"
+          @click="!autoPilotLocked && toggle"
+          :disabled="autoPilotLocked"
+        >
           {{ isActive ? "ACTIVE" : "ARM" }}
         </button>
       </div>
@@ -861,6 +866,16 @@ watch(telemetrySpeed, (newVal) => {
 }
 
 .start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ff4444;
+  color: #ff4444;
+  box-shadow:
+    0 2px 0 #300,
+    inset 0 0 6px #ff444444;
+}
+
+.mode-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   border-color: #ff4444;
