@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { watch } from "vue";
 import {
   connectTelemetry,
   disconnectTelemetry,
@@ -172,6 +173,12 @@ const takeOffLocked = computed(() => {
 
 const landingLocked = computed(() => {
   return telemetryAltitude.value <= 140;
+});
+
+watch(altitude, (newVal, oldVal) => {
+  if (isActive.value && newVal !== oldVal) {
+    isActive.value = false;
+  }
 });
 </script>
 <template>

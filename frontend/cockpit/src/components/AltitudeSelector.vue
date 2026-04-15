@@ -24,6 +24,11 @@ const indicatorPosition = computed(() => {
   const value = props.altitude - props.min;
   return 100 - (value / range) * 100;
 });
+
+const handleClick = () => {
+  if (props.locked) return;
+  emit("toggle");
+};
 </script>
 
 <template>
@@ -41,8 +46,8 @@ const indicatorPosition = computed(() => {
 
     <button
       class="toggle mode-btn"
-      :class="{ locked }"
-      @click="!locked && emit('toggle')"
+      :class="{ locked, active: isActive }"
+      @click="handleClick"
       :disabled="locked"
     >
       {{ isActive ? "ACTIVE" : "ARM" }}
@@ -139,5 +144,11 @@ const indicatorPosition = computed(() => {
 .toggle.locked {
   color: #ff4444;
   border-color: #ff4444;
+}
+
+.toggle.active {
+  color: #00ff9c;
+  border-color: #00ff9c;
+  box-shadow: 0 0 10px #00ff9c55;
 }
 </style>
