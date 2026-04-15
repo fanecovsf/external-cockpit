@@ -6,6 +6,7 @@ import {
   getLatestTelemetry,
 } from "./services/telemetrySocket";
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
+import AltitudeSelector from "./components/AltitudeSelector.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -118,25 +119,9 @@ const isActive = ref(false);
 const min = 140;
 const max = 300;
 
-const onScroll = (e) => {
-  if (e.deltaY < 0 && altitude.value < max) {
-    altitude.value = Math.min(max, altitude.value + 10);
-    isActive.value = false;
-  } else if (e.deltaY > 0 && altitude.value > min) {
-    altitude.value = Math.max(min, altitude.value - 10);
-    isActive.value = false;
-  }
-};
-
 const toggle = () => {
   isActive.value = !isActive.value;
 };
-
-const indicatorPosition = computed(() => {
-  const range = max - min;
-  const value = altitude.value - min;
-  return 100 - (value / range) * 100;
-});
 
 // ================= DISPLAY HELPERS =================
 
@@ -206,27 +191,14 @@ const landingLocked = computed(() => {
     <button class="test-btn" @click="randomizeTelemetry">TEST TELEMETRY</button>
     <button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>
     <div class="left-panel">
-      <div class="panel">
-        <div class="display">
-          <span class="label">ALT</span>
-          <span class="value">{{ altitude }}</span>
-        </div>
-        <div class="scroll" @wheel.prevent="onScroll">
-          <div
-            class="indicator"
-            :style="{ top: indicatorPosition + '%' }"
-          ></div>
-          <div class="tick" v-for="n in 30" :key="n"></div>
-        </div>
-        <button
-          class="toggle mode-btn"
-          :class="{ locked: autoPilotLocked }"
-          @click="!autoPilotLocked && toggle"
-          :disabled="autoPilotLocked"
-        >
-          {{ isActive ? "ACTIVE" : "ARM" }}
-        </button>
-      </div>
+      <AltitudeSelector
+        v-model:altitude="altitude"
+        :min="min"
+        :max="max"
+        :isActive="isActive"
+        :locked="autoPilotLocked"
+        @toggle="toggle"
+      />
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
     <div class="instruments-wrapper">
