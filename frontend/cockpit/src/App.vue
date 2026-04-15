@@ -8,6 +8,7 @@ import {
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
+import ToggleSwitch from "./components/ToggleSwitch.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -208,20 +209,12 @@ const landingLocked = computed(() => {
     <div class="modes-bar">
       <div class="takeoff-group">
         <!-- TOGGLE ARM -->
-        <div
-          class="toggle-switch"
-          @click="!takeOffLocked && toggleTakeOffArm()"
-          :class="{ locked: takeOffLocked }"
-        >
-          <div class="switch-base">
-            <div
-              class="switch-lever"
-              :class="{ on: takeOffState === 'ARMED' || takeOffState === 'ON' }"
-            ></div>
-          </div>
-          <span class="switch-label">TAKE OFF ARM</span>
-        </div>
-
+        <ToggleSwitch
+          label="TAKE OFF ARM"
+          :modelValue="takeOffState === 'ARMED' || takeOffState === 'ON'"
+          :locked="takeOffLocked"
+          @click="toggleTakeOffArm"
+        />
         <!-- BOTÃO START -->
         <button
           class="start-btn"
@@ -233,16 +226,11 @@ const landingLocked = computed(() => {
       </div>
 
       <!-- LANDING -->
-      <div
-        class="toggle-switch"
-        @click="!landingLocked && toggleLandingMode()"
-        :class="{ locked: landingLocked }"
-      >
-        <div class="switch-base">
-          <div class="switch-lever" :class="{ on: landingMode }"></div>
-        </div>
-        <span class="switch-label">LANDING MODE</span>
-      </div>
+      <ToggleSwitch
+        label="LANDING MODE"
+        v-model="landingMode"
+        :locked="landingLocked"
+      />
     </div>
     <!-- BOTTOM BAR -->
     <div class="bottom-bar">
@@ -793,37 +781,6 @@ const landingLocked = computed(() => {
 .start-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-/* ===== LOCKED STATE ===== */
-
-.toggle-switch.locked .switch-base {
-  border-color: #ff4444;
-  box-shadow:
-    inset 0 0 10px rgba(0, 0, 0, 0.8),
-    0 0 10px rgba(255, 68, 68, 0.4);
-}
-
-/* alavanca travada */
-.toggle-switch.locked .switch-lever {
-  background: linear-gradient(180deg, #ff8888, #aa2222);
-}
-
-/* LED vermelho */
-.toggle-switch.locked .switch-base::after {
-  background: #ff4444;
-  box-shadow: 0 0 8px #ff4444;
-}
-
-/* label */
-.toggle-switch.locked .switch-label {
-  color: #ff4444;
-}
-
-/* impede interação visual */
-.toggle-switch.locked {
-  cursor: not-allowed;
-  opacity: 0.8;
 }
 
 .start-btn:disabled {
