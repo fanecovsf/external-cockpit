@@ -9,6 +9,7 @@ import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
 import ToggleSwitch from "./components/ToggleSwitch.vue";
+import FuelBar from "./components/FuelBar.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -36,10 +37,6 @@ const zeroTelemetry = () => {
 
 const maxFuel = 88000;
 const fuel = ref(maxFuel / 2);
-
-const fuelPercent = computed(() => {
-  return (fuel.value / maxFuel) * 100;
-});
 
 const fuelTransfer = ref(false);
 
@@ -232,25 +229,13 @@ const landingLocked = computed(() => {
         :locked="landingLocked"
       />
     </div>
-    <!-- BOTTOM BAR -->
-    <div class="bottom-bar">
-      <div class="fuel-container">
-        <span class="fuel-label"
-          >FUEL {{ fuel.toLocaleString() }} / {{ maxFuel.toLocaleString() }} -
-          {{ Math.round(fuelPercent) }}%</span
-        >
-        <div class="fuel-bar">
-          <div class="fuel-fill" :style="{ width: fuelPercent + '%' }"></div>
-        </div>
-      </div>
-      <button
-        class="fuel-transfer"
-        :class="{ active: fuelTransfer }"
-        @click="toggleFuelTransfer"
-      >
-        FUEL TRANSFER
-      </button>
-    </div>
+    <!-- FUEL BAR -->
+    <FuelBar
+      :fuel="fuel"
+      :maxFuel="maxFuel"
+      :transferActive="fuelTransfer"
+      @toggle-transfer="toggleFuelTransfer"
+    />
   </div>
 </template>
 <style scoped>
