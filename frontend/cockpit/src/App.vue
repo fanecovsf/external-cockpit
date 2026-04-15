@@ -1,47 +1,113 @@
 <script setup>
-import { ref, computed, watch } from "vue";
-import { onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import {
   connectTelemetry,
   disconnectTelemetry,
+  getLatestTelemetry,
 } from "./services/telemetrySocket";
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 
-const altitudeAnimFrame = ref(null);
-const speedAnimFrame = ref(null);
+// ================= TELEMETRY STATE =================
+
+const telemetryAltitude = ref(0);
+const telemetrySpeed = ref(0);
 const telemetryPitch = ref(0);
 const telemetryRoll = ref(0);
 
+// valores exibidos (suavizados)
+const displayAltitude = ref(0);
+const displaySpeed = ref(0);
+
+// ================= UTILS ================
+const randomizeTelemetry = () => {
+  telemetryAltitude.value = Math.random() * 300;
+  telemetrySpeed.value = Math.random() * 400;
+};
+
+const zeroTelemetry = () => {
+  telemetryAltitude.value = 0;
+  telemetrySpeed.value = 0;
+};
+
+// ================= FUEL =================
+
+const maxFuel = 88000;
+const fuel = ref(maxFuel / 2);
+
+const fuelPercent = computed(() => {
+  return (fuel.value / maxFuel) * 100;
+});
+
+const fuelTransfer = ref(false);
+
+const toggleFuelTransfer = () => {
+  fuelTransfer.value = !fuelTransfer.value;
+};
+
+// ================= HANDLE TELEMETRY =================
+
 const handleTelemetry = (data) => {
-  if (data.schema == "telemetry") {
-    if (data.altitude !== undefined) {
-      telemetryAltitude.value = data.altitude;
-    }
+  if (data.schema !== "telemetry") return;
 
-    if (data.speed !== undefined) {
-      telemetrySpeed.value = data.speed;
-    }
+  if (data.altitude !== undefined) {
+    telemetryAltitude.value = data.altitude;
+  }
 
-    if (data.fuel !== undefined) {
-      fuel.value = data.fuel;
-    }
+  if (data.speed !== undefined) {
+    telemetrySpeed.value = data.speed;
+  }
 
-    if (data.pitch !== undefined) {
-      telemetryPitch.value = data.pitch;
-    }
+  if (data.fuel !== undefined) {
+    fuel.value = data.fuel;
+  }
 
-    if (data.roll !== undefined) {
-      telemetryRoll.value = data.roll;
-    }
+  if (data.pitch !== undefined) {
+    telemetryPitch.value = data.pitch;
+  }
+
+  if (data.roll !== undefined) {
+    telemetryRoll.value = data.roll;
   }
 };
 
+// ================= MAIN LOOP (HIGH PERFORMANCE) =================
+
+let animationFrame = null;
+let lastUpdate = 0;
+
+const loop = (time) => {
+  // 🔥 controla frequência de processamento (20 FPS)
+  if (time - lastUpdate > 50) {
+    const data = getLatestTelemetry();
+
+    if (data) {
+      handleTelemetry(data);
+    }
+
+    lastUpdate = time;
+  }
+
+  displayAltitude.value +=
+    (telemetryAltitude.value - displayAltitude.value) * 0.08;
+
+  displaySpeed.value += (telemetrySpeed.value - displaySpeed.value) * 0.1;
+
+  animationFrame = requestAnimationFrame(loop);
+};
+
+// ================= LIFECYCLE =================
+
 onMounted(() => {
-  connectTelemetry(handleTelemetry);
+  connectTelemetry();
+  animationFrame = requestAnimationFrame(loop);
 });
 
 onUnmounted(() => {
   disconnectTelemetry();
+
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
 });
 
 // ================= ALTITUDE CONTROL =================
@@ -66,58 +132,21 @@ const toggle = () => {
   isActive.value = !isActive.value;
 };
 
-// posição do indicador (0% = topo, 100% = base)
 const indicatorPosition = computed(() => {
   const range = max - min;
   const value = altitude.value - min;
   return 100 - (value / range) * 100;
 });
 
-// ================= FUEL =================
+// ================= DISPLAY HELPERS =================
 
-const maxFuel = 88000;
-const fuel = ref(maxFuel / 2);
-
-const fuelPercent = computed(() => {
-  return (fuel.value / maxFuel) * 100;
-});
-
-const fuelTransfer = ref(false);
-
-const toggleFuelTransfer = () => {
-  fuelTransfer.value = !fuelTransfer.value;
-};
-
-// ================= TELEMETRY =================
-
-const telemetryAltitude = ref(327);
-const telemetrySpeed = ref(128.6);
-
-// ================= HELPERS =================
-
-// pega dígitos inteiros (ex: 327 → [3,2,7])
 const getDigits = (value) => {
   const str = Math.floor(value).toString().padStart(3, "0");
   return str.split("").map((n) => parseInt(n));
 };
 
-// pega decimal (ex: 128.6 → 6)
 const getDecimal = (value) => {
   return Math.floor((value % 1) * 10);
-};
-
-const randomizeTelemetry = () => {
-  // altitude inteira (0 a 320)
-  telemetryAltitude.value = Math.floor(Math.random() * 321);
-
-  // speed float (0.0 a 200.0 com 1 casa decimal)
-  const randomSpeed = Math.random() * 200;
-  telemetrySpeed.value = parseFloat(randomSpeed.toFixed(1));
-};
-
-const zeroTelemetry = () => {
-  telemetryAltitude.value = 0;
-  telemetrySpeed.value = 0;
 };
 
 // ================= MODES =================
@@ -145,7 +174,6 @@ const startTakeOff = () => {
 
   takeOffState.value = "ON";
 
-  // simula travamento depois de iniciar (opcional realismo)
   setTimeout(() => {
     takeOffState.value = "LOCKED";
   }, 1500);
@@ -159,72 +187,18 @@ const toggleLandingMode = () => {
   landingMode.value = !landingMode.value;
 };
 
-// auto reset landing ao tocar o solo
-watch(telemetryAltitude, (val) => {
-  if (val <= 0) {
-    landingMode.value = false;
-  }
-});
-
 // ================= LOCK STATES =================
 
-// Auto Pilot bloqueado se não pode ativar
 const autoPilotLocked = computed(() => {
   return telemetryAltitude.value <= 140;
 });
 
-// TakeOff bloqueado se não pode armar
 const takeOffLocked = computed(() => {
   return !canTakeOff.value && takeOffState.value === "OFF";
 });
 
-// Landing bloqueado se não pode usar
 const landingLocked = computed(() => {
   return telemetryAltitude.value <= 140;
-});
-
-const displayAltitude = ref(telemetryAltitude.value);
-const displaySpeed = ref(telemetrySpeed.value);
-
-const animateValue = (current, target, setter, frameRef, speed = 0.08) => {
-  if (frameRef.value) {
-    cancelAnimationFrame(frameRef.value);
-  }
-
-  const step = () => {
-    const diff = target - current.value;
-
-    if (Math.abs(diff) < 0.1) {
-      setter(target);
-      frameRef.value = null;
-      return;
-    }
-
-    current.value += diff * speed;
-    setter(current.value);
-
-    frameRef.value = requestAnimationFrame(step);
-  };
-
-  step();
-};
-
-watch(telemetryAltitude, (newVal) => {
-  animateValue(
-    displayAltitude,
-    newVal,
-    (v) => (displayAltitude.value = v),
-    altitudeAnimFrame,
-  );
-});
-
-watch(telemetrySpeed, (newVal) => {
-  animateValue(
-    displaySpeed,
-    newVal,
-    (v) => (displaySpeed.value = v),
-    speedAnimFrame,
-  );
 });
 </script>
 <template>

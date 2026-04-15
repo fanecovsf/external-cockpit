@@ -2,8 +2,18 @@ local http_websocket = require("http.websocket")
 local json = require("cjson")
 local socket = require("socket")
 
+-- =========================
+-- CONFIG
+-- =========================
+local WS_URL = "ws://localhost:8000/ws/telemetry"
+local LOOP_INTERVAL = 0.1 -- 10Hz
+local HEARTBEAT_INTERVAL = 5 -- segundos
+
+-- =========================
+-- CONNECTION
+-- =========================
 local function connect()
-  local ws, err = http_websocket.new_from_uri("ws://localhost:8000/ws/cockpit")
+  local ws, err = http_websocket.new_from_uri(WS_URL)
 
   if not ws then
     return nil, err
@@ -17,14 +27,51 @@ local function connect()
   return ws
 end
 
+local function reconnect()
+  local retry = 0
+
+  while true do
+    retry = retry + 1
+    local delay = math.min(2 ^ retry, 10)
+
+    print("Reconectando em", delay, "segundos...")
+    socket.sleep(delay)
+
+    local ws, err = connect()
+
+    if ws then
+      print("Reconectado!")
+      return ws
+    end
+  end
+end
+
 local ws, err = connect()
 
 if not ws then
   print("Erro ao conectar:", err)
-  return
+  ws = reconnect()
+else
+  print("Conectado ao WebSocket")
 end
 
-print("Conectado ao WebSocket")
+-- =========================
+-- HELPERS
+-- =========================
+local function lerp(current, target, factor)
+  return current + (target - current) * factor
+end
+
+local function randomRange(min, max)
+  return min + math.random() * (max - min)
+end
+
+local function round(value, decimals)
+  local mult = 10 ^ decimals
+  return math.floor(value * mult + 0.5) / mult
+end
+
+math.randomseed(os.time())
 
 -- =========================
 -- ESTADO
@@ -43,31 +90,32 @@ local targetPitch = 0
 local targetRoll = 0
 
 -- =========================
--- HELPERS
+-- PAYLOAD REUTILIZÁVEL
 -- =========================
-local function lerp(current, target, factor)
-  return current + (target - current) * factor
-end
+local payload = {
+  schema = "telemetry",
+  altitude = 0,
+  speed = 0,
+  fuel = 0,
+  pitch = 0,
+  roll = 0
+}
 
-local function randomRange(min, max)
-  return min + math.random() * (max - min)
-end
-
-math.randomseed(os.time())
+-- =========================
+-- HEARTBEAT
+-- =========================
+local lastHeartbeat = socket.gettime()
 
 -- =========================
 -- LOOP PRINCIPAL
 -- =========================
 while true do
-  -- muda comportamento aleatório
+  -- comortamento aleatório
   if math.random() < 0.1 then
     targetAltitude = randomRange(0, 300)
     targetSpeed = randomRange(0, 200)
 
-    -- pitch acompanha subida/descida
     targetPitch = (targetAltitude - altitude) * 0.01
-
-      -- roll aleatório (leve inclinação)
     targetRoll = randomRange(-0.5, 0.5)
   end
 
@@ -81,37 +129,40 @@ while true do
   fuel = fuel - (speed * 0.05)
   if fuel < 0 then fuel = 0 end
 
-  -- payload
-  local payload = {
-    schema = "telemetry",
-    altitude = math.floor(altitude),
-    speed = tonumber(string.format("%.1f", speed)),
-    fuel = tonumber(string.format("%.2f", fuel)),
-    pitch = tonumber(string.format("%.2f", pitch)),
-    roll = tonumber(string.format("%.2f", roll))
-  }
+  -- atualiza payload (sem recriar tabela)
+  payload.altitude = math.floor(altitude)
+  payload.speed = round(speed, 1)
+  payload.fuel = round(fuel, 2)
+  payload.pitch = round(pitch, 2)
+  payload.roll = round(roll, 2)
 
+  -- encode JSON
   local message = json.encode(payload)
 
-  -- envio
+  -- garante conexão
+  if not ws then
+    ws = reconnect()
+  end
+
+  -- envio protegido
   local ok, send_err = ws:send(message)
 
   if not ok then
-    print("Erro ao enviar:", send_err)
-
-    -- 🔁 reconectar automaticamente
-    print("Tentando reconectar...")
-    ws, err = connect()
-
-    if not ws then
-      print("Falha ao reconectar:", err)
-      socket.sleep(2)
-    else
-      print("Reconectado!")
-    end
+  print("Erro ao enviar:", send_err)
+  ws = reconnect()
   else
-    print("Enviado:", message)
+    while true do
+      local msg, opcode, err = ws:receive(0)
+      if not msg then break end
+    end
   end
 
-  socket.sleep(0.1)
+  -- heartbeat (mantém conexão viva)
+  local now = socket.gettime()
+  if now - lastHeartbeat > HEARTBEAT_INTERVAL then
+    ws:send('{"type":"ping"}')
+    lastHeartbeat = now
+  end
+
+  socket.sleep(LOOP_INTERVAL)
 end

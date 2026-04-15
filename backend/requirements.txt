@@ -19,6 +19,7 @@ markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 marshmallow==4.3.0
 mdurl==0.1.2
+orjson==3.11.8
 pydantic==2.13.0
 pydantic-extra-types==2.11.1
 pydantic-settings==2.13.1

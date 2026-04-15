@@ -1,5 +1,10 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from backend.schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
+import orjson
+import uvloop
+import asyncio
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 app = FastAPI()
 
@@ -9,57 +14,44 @@ telemetry_schema = TelemetryDataSchema()
 
 schemas = ['command', 'auto_pilot', 'telemetry']
 
-connections = []
+connections = set()
 
-async def broadcast(message):
-    disconnected = []
+import asyncio
 
-    for conn in connections:
-        try:
-            await conn.send_json(message)
-        except:
-            disconnected.append(conn)
+async def broadcast(message: str):
+    tasks = [conn.send_text(message) for conn in connections]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    for conn in disconnected:
-        connections.remove(conn)
+    for conn, result in zip(list(connections), results):
+        if isinstance(result, Exception):
+            connections.remove(conn)
 
-@app.websocket("/ws/cockpit")
+@app.websocket("/ws/telemetry")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    connections.append(websocket)
+    connections.add(websocket)
 
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                raw = await websocket.receive_text()
+            except Exception as e:
+                print("Erro receive:", type(e), repr(e))
+                break
 
-            if 'schema' not in data:
+            try:
+                data = orjson.loads(raw)
+            except Exception as e:
+                print("Erro JSON:", repr(e))
                 continue
 
-            schema_name = data['schema']
-            if schema_name not in schemas:
+            if data.get("schema") != "telemetry":
                 continue
 
-            if schema_name == 'command':
-                try:
-                    validated_data = command_schema.load(data)
-                    await broadcast(validated_data)
-                except Exception as e:
-                    print("Validation Error:", e)
+            await broadcast(raw)
 
-            elif schema_name == 'auto_pilot':
-                try:
-                    validated_data = auto_pilot_schema.load(data)
-                    await broadcast(validated_data)
-                except Exception as e:
-                    print("Validation Error:", e)
-
-            elif schema_name == 'telemetry':
-                try:
-                    validated_data = telemetry_schema.load(data)
-                    await broadcast(validated_data)
-                except Exception as e:
-                    print("Validation Error:", e)
-
-    except WebSocketDisconnect:
-        connections.remove(websocket)
+    except WebSocketDisconnect as e:
+        print("Disconnect:", e)
+    finally:
+        connections.discard(websocket)
         
