@@ -7,6 +7,7 @@ import {
 } from "./services/telemetrySocket";
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
+import InstrumentDisplay from "./components/InstrumentDisplay.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -123,17 +124,6 @@ const toggle = () => {
   isActive.value = !isActive.value;
 };
 
-// ================= DISPLAY HELPERS =================
-
-const getDigits = (value) => {
-  const str = Math.floor(value).toString().padStart(3, "0");
-  return str.split("").map((n) => parseInt(n));
-};
-
-const getDecimal = (value) => {
-  return Math.floor((value % 1) * 10);
-};
-
 // ================= MODES =================
 
 // TAKE OFF
@@ -202,50 +192,13 @@ const landingLocked = computed(() => {
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
     <div class="instruments-wrapper">
-      <!-- ALTITUDE -->
-      <div class="inst-box">
-        <span class="inst-title">ALT</span>
-        <div class="inst-digits">
-          <div
-            class="inst-digit"
-            v-for="(d, i) in getDigits(displayAltitude)"
-            :key="'alt-' + i"
-          >
-            <span class="inst-faded">{{ (d + 1) % 10 }}</span>
-            <span class="inst-active">{{ d }}</span>
-            <span class="inst-faded">{{ (d + 9) % 10 }}</span>
-          </div>
-        </div>
-      </div>
-      <!-- SPEED -->
-      <div class="inst-box">
-        <span class="inst-title">SPD</span>
-        <div class="inst-digits">
-          <!-- parte inteira -->
-          <div
-            class="inst-digit"
-            v-for="(d, i) in getDigits(displaySpeed)"
-            :key="'spd-' + i"
-          >
-            <span class="inst-faded">{{ (d + 1) % 10 }}</span>
-            <span class="inst-active">{{ d }}</span>
-            <span class="inst-faded">{{ (d + 9) % 10 }}</span>
-          </div>
-          <!-- decimal -->
-          <div class="inst-decimal-block">
-            <span class="inst-dot">.</span>
-            <div class="inst-digit small">
-              <span class="inst-faded">{{
-                (getDecimal(displaySpeed) + 1) % 10
-              }}</span>
-              <span class="inst-active">{{ getDecimal(displaySpeed) }}</span>
-              <span class="inst-faded">{{
-                (getDecimal(displaySpeed) + 9) % 10
-              }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <InstrumentDisplay label="ALT" :value="displayAltitude" />
+
+      <InstrumentDisplay
+        label="SPD"
+        :value="displaySpeed"
+        :showDecimal="true"
+      />
 
       <div class="horizon-wrapper">
         <ArtificialHorizon :pitch="telemetryPitch" :roll="telemetryRoll" />
