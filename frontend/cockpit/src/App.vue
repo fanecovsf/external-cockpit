@@ -4,15 +4,18 @@ import { watch } from "vue";
 import {
   connectTelemetry,
   disconnectTelemetry,
-  getLatestTelemetry,
 } from "./services/telemetrySocket";
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
 import ToggleSwitch from "./components/ToggleSwitch.vue";
 import FuelBar from "./components/FuelBar.vue";
+import PlaneDisplay from "./components/PlaneDisplay.vue";
 
 // ================= TELEMETRY STATE =================
+
+const lastTelemetryTime = ref(Date.now());
+const TIMEOUT = 10000; // 10 segundos
 
 const telemetryAltitude = ref(0);
 const telemetrySpeed = ref(0);
@@ -22,6 +25,8 @@ const telemetryRoll = ref(0);
 // valores exibidos (suavizados)
 const displayAltitude = ref(0);
 const displaySpeed = ref(0);
+
+const planeName = ref(null);
 
 // ================= UTILS ================
 const randomizeTelemetry = () => {
@@ -48,44 +53,53 @@ const toggleFuelTransfer = () => {
 // ================= HANDLE TELEMETRY =================
 
 const handleTelemetry = (data) => {
-  if (data.schema !== "telemetry") return;
+  lastTelemetryTime.value = Date.now();
 
-  if (data.altitude !== undefined) {
-    telemetryAltitude.value = data.altitude;
+  if (data.schema === "plane") {
+    planeName.value = data.plane_id;
+    return;
   }
 
-  if (data.speed !== undefined) {
-    telemetrySpeed.value = data.speed;
-  }
+  if (data.schema === "telemetry") {
+    if (data.altitude !== undefined) {
+      telemetryAltitude.value = data.altitude;
+    }
 
-  if (data.fuel !== undefined) {
-    fuel.value = data.fuel;
-  }
+    if (data.speed !== undefined) {
+      telemetrySpeed.value = data.speed;
+    }
 
-  if (data.pitch !== undefined) {
-    telemetryPitch.value = data.pitch;
-  }
+    if (data.fuel !== undefined) {
+      fuel.value = data.fuel;
+    }
 
-  if (data.roll !== undefined) {
-    telemetryRoll.value = data.roll;
+    if (data.pitch !== undefined) {
+      telemetryPitch.value = data.pitch;
+    }
+
+    if (data.roll !== undefined) {
+      telemetryRoll.value = data.roll;
+    }
   }
 };
 
 // ================= MAIN LOOP (HIGH PERFORMANCE) =================
 
 let animationFrame = null;
-let lastUpdate = 0;
 
-const loop = (time) => {
-  // 🔥 controla frequência de processamento (20 FPS)
-  if (time - lastUpdate > 50) {
-    const data = getLatestTelemetry();
+const loop = () => {
+  const now = Date.now();
 
-    if (data) {
-      handleTelemetry(data);
-    }
+  // 🚨 TIMEOUT
+  if (now - lastTelemetryTime.value > TIMEOUT) {
+    planeName.value = null;
 
-    lastUpdate = time;
+    telemetryAltitude.value = 0;
+    telemetrySpeed.value = 0;
+    telemetryPitch.value = 0;
+    telemetryRoll.value = 0;
+
+    fuel.value = 0;
   }
 
   displayAltitude.value +=
@@ -99,7 +113,7 @@ const loop = (time) => {
 // ================= LIFECYCLE =================
 
 onMounted(() => {
-  connectTelemetry();
+  connectTelemetry(handleTelemetry);
   animationFrame = requestAnimationFrame(loop);
 });
 
@@ -155,12 +169,6 @@ const startTakeOff = () => {
 
 // LANDING MODE
 const landingMode = ref(false);
-
-const toggleLandingMode = () => {
-  if (telemetryAltitude.value <= 140) return;
-  landingMode.value = !landingMode.value;
-};
-
 // ================= LOCK STATES =================
 
 const autoPilotLocked = computed(() => {
@@ -183,8 +191,9 @@ watch(altitude, (newVal, oldVal) => {
 </script>
 <template>
   <div class="cockpit">
-    <button class="test-btn" @click="randomizeTelemetry">TEST TELEMETRY</button>
-    <button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>
+    <PlaneDisplay :plane="planeName" />
+    <!--<button class="test-btn" @click="randomizeTelemetry">TEST TELEMETRY</button>-->
+    <!--<button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>-->
     <div class="left-panel">
       <AltitudeSelector
         v-model:altitude="altitude"

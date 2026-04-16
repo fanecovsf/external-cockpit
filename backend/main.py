@@ -12,7 +12,7 @@ command_schema = CommandSchema()
 auto_pilot_schema = AutoPilotAltitudeSchema()
 telemetry_schema = TelemetryDataSchema()
 
-schemas = ['command', 'auto_pilot', 'telemetry']
+schemas = ['command', 'auto_pilot', 'telemetry', 'plane']
 
 connections = set()
 
@@ -45,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 print("Erro JSON:", repr(e))
                 continue
 
-            if data.get("schema") != "telemetry":
+            if data.get("schema") != "telemetry" and data.get("schema") != "plane":
                 continue
 
             await broadcast(raw)

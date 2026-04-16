@@ -1,6 +1,5 @@
 let socket = null;
 let retryTimeout = null;
-let latestTelemetry = null;
 
 export const connectTelemetry = (onMessage) => {
   socket = new WebSocket("ws://localhost:8000/ws/telemetry");
@@ -10,7 +9,11 @@ export const connectTelemetry = (onMessage) => {
   };
 
   socket.onmessage = (event) => {
-    latestTelemetry = JSON.parse(event.data);
+    const data = JSON.parse(event.data);
+
+    if (onMessage) {
+      onMessage(data); // 🔥 ENTREGA NA HORA
+    }
   };
 
   socket.onclose = () => {
@@ -29,8 +32,4 @@ export const disconnectTelemetry = () => {
     socket.close();
     socket = null;
   }
-};
-
-export const getLatestTelemetry = () => {
-  return latestTelemetry;
 };

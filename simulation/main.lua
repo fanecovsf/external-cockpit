@@ -24,6 +24,8 @@ local function connect()
     return nil, conn_err
   end
 
+  ws:send(json.encode({schema = "plane", plane_id = "IC-777x"}))
+
   return ws
 end
 
@@ -41,6 +43,7 @@ local function reconnect()
 
     if ws then
       print("Reconectado!")
+      ws:send(json.encode({schema = "plane", plane_id = "IC-777x"}))
       return ws
     end
   end
