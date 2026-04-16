@@ -137,6 +137,13 @@ const toggle = () => {
   isActive.value = !isActive.value;
 };
 
+const speed = ref(100);
+const autoThrottleActive = ref(false);
+
+const toggleSpeed = () => {
+  autoThrottleActive.value = !autoThrottleActive.value;
+};
+
 // ================= MODES =================
 
 // TAKE OFF
@@ -196,12 +203,22 @@ watch(altitude, (newVal, oldVal) => {
     <!--<button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>-->
     <div class="left-panel">
       <AltitudeSelector
-        v-model:altitude="altitude"
+        v-model="altitude"
         :min="min"
         :max="max"
         :isActive="isActive"
         :locked="autoPilotLocked"
         @toggle="toggle"
+      />
+
+      <AltitudeSelector
+        v-model="speed"
+        :min="40"
+        :max="200"
+        label="SPD"
+        :isActive="autoThrottleActive"
+        :locked="autoPilotLocked"
+        @toggle="toggleSpeed"
       />
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
@@ -279,6 +296,7 @@ watch(altitude, (newVal, oldVal) => {
   margin-left: 40px;
   display: flex;
   align-items: center;
+  gap: 20px;
 }
 
 /* ===== INSTRUMENTS WRAPPER ===== */
