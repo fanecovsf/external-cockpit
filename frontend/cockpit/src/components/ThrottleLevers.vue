@@ -1,0 +1,292 @@
+<script setup>
+import { ref } from "vue";
+
+const props = defineProps({
+  leftValue: Number,
+  rightValue: Number,
+  max: {
+    type: Number,
+    default: 15,
+  },
+  linked: Boolean,
+});
+
+const emit = defineEmits([
+  "update:leftValue",
+  "update:rightValue",
+  "update:linked",
+]);
+
+const dragging = ref(null);
+const slotRef = ref(null);
+
+// suavização
+const smoothValue = ref({
+  left: props.leftValue,
+  right: props.rightValue,
+});
+
+const HANDLE_HEIGHT = 46;
+
+// ===== SMOOTH LOOP =====
+const lerp = (start, end, t) => start + (end - start) * t;
+
+const animate = () => {
+  smoothValue.value.left = lerp(smoothValue.value.left, props.leftValue, 0.2);
+
+  smoothValue.value.right = lerp(
+    smoothValue.value.right,
+    props.rightValue,
+    0.2,
+  );
+
+  requestAnimationFrame(animate);
+};
+
+animate();
+
+// ===== POSIÇÃO SUAVE =====
+const getPosition = (val, side) => {
+  const current =
+    side === "left" ? smoothValue.value.left : smoothValue.value.right;
+
+  const percent = current / props.max;
+
+  const offset = (HANDLE_HEIGHT / slotRef.value?.clientHeight || 0) * 50;
+
+  return 100 - percent * (100 - offset * 2) - offset;
+};
+
+// ===== DRAG =====
+const startDrag = (e, side) => {
+  e.preventDefault();
+  dragging.value = side;
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", stopDrag);
+};
+
+const stopDrag = () => {
+  dragging.value = null;
+  window.removeEventListener("mousemove", onMove);
+  window.removeEventListener("mouseup", stopDrag);
+};
+
+const onMove = (e) => {
+  if (!dragging.value || !slotRef.value) return;
+
+  const rect = slotRef.value.getBoundingClientRect();
+
+  const y = e.clientY - rect.top;
+
+  const minY = HANDLE_HEIGHT / 2;
+  const maxY = rect.height - HANDLE_HEIGHT / 2;
+
+  const clampedY = Math.max(minY, Math.min(maxY, y));
+
+  const percent = (clampedY - minY) / (maxY - minY);
+
+  const value = Math.round((1 - percent) * props.max);
+
+  if (props.linked) {
+    emit("update:leftValue", value);
+    emit("update:rightValue", value);
+  } else {
+    if (dragging.value === "left") {
+      emit("update:leftValue", value);
+    } else {
+      emit("update:rightValue", value);
+    }
+  }
+};
+
+// ===== LOCK =====
+const toggleLink = () => {
+  emit("update:linked", !props.linked);
+};
+</script>
+
+<template>
+  <div class="throttle">
+    <!-- DISPLAY -->
+    <div class="display">
+      <div class="engine">
+        <span class="label">E1</span>
+        <span class="value">{{ leftValue }}</span>
+      </div>
+      <div class="engine">
+        <span class="label">E2</span>
+        <span class="value">{{ rightValue }}</span>
+      </div>
+    </div>
+
+    <!-- SLOT -->
+    <div class="slot" ref="slotRef">
+      <div class="rail left-rail"></div>
+      <div class="rail right-rail"></div>
+
+      <div
+        class="lever left"
+        :style="{ top: getPosition(leftValue, 'left') + '%' }"
+        @mousedown="(e) => startDrag(e, 'left')"
+      >
+        <div class="handle"></div>
+      </div>
+
+      <div
+        class="lever right"
+        :style="{ top: getPosition(rightValue, 'right') + '%' }"
+        @mousedown="(e) => startDrag(e, 'right')"
+      >
+        <div class="handle"></div>
+      </div>
+    </div>
+
+    <!-- LOCK -->
+    <button class="link-btn" :class="{ active: linked }" @click="toggleLink">
+      LOCK
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.throttle {
+  width: 160px;
+  height: 415px;
+  background: linear-gradient(145deg, #2a2a2a, #0f0f0f);
+  border: 2px solid #444;
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow:
+    inset -6px -6px 14px rgba(0, 0, 0, 0.8),
+    inset 6px 6px 14px rgba(255, 255, 255, 0.05);
+}
+
+/* DISPLAY */
+.display {
+  display: flex;
+  justify-content: space-around;
+  background: black;
+  border: 2px solid #222;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: inset 0 0 12px #00ff9c22;
+}
+
+.engine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #00ff9c;
+}
+
+.label {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.value {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* SLOT */
+.slot {
+  position: relative;
+  height: 300px;
+  background: linear-gradient(180deg, #111, #222);
+  border-radius: 12px;
+  border: 2px solid #555;
+}
+
+/* RAILS */
+.rail {
+  position: absolute;
+  width: 5px;
+  height: 100%;
+  background: linear-gradient(180deg, #444, #111);
+}
+
+.left-rail {
+  left: 30%;
+}
+
+.right-rail {
+  left: 70%;
+}
+
+/* LEVERS */
+.lever {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+}
+
+.lever:active {
+  cursor: grabbing;
+}
+
+.lever.left {
+  left: 30%;
+}
+
+.lever.right {
+  left: 70%;
+}
+
+/* HANDLE */
+.handle {
+  width: 26px;
+  height: 46px;
+  background: linear-gradient(145deg, #3a3a3a, #111);
+  border-radius: 8px;
+  border: 2px solid #00ff9c;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.9),
+    inset 0 0 10px #00ff9c44;
+  position: relative;
+}
+
+.handle::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 20px;
+  height: 12px;
+  background: #2a2a2a;
+  border-radius: 8px 8px 0 0;
+  transform: translateX(-50%);
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  background: #00ff9c;
+  transform: translateX(-50%);
+}
+
+/* LOCK */
+.link-btn {
+  background: #111;
+  border: 1px solid #555;
+  color: #777;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer; /* 👈 ajuste */
+}
+
+.link-btn.active {
+  color: #00ff9c;
+  border-color: #00ff9c;
+  box-shadow: 0 0 10px #00ff9c55;
+}
+</style>

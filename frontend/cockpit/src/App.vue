@@ -11,6 +11,7 @@ import InstrumentDisplay from "./components/InstrumentDisplay.vue";
 import ToggleSwitch from "./components/ToggleSwitch.vue";
 import FuelBar from "./components/FuelBar.vue";
 import PlaneDisplay from "./components/PlaneDisplay.vue";
+import ThrottleLevers from "./components/ThrottleLevers.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -144,6 +145,10 @@ const toggleSpeed = () => {
   autoThrottleActive.value = !autoThrottleActive.value;
 };
 
+const throttleLeft = ref(0);
+const throttleRight = ref(0);
+const throttleLinked = ref(true);
+
 // ================= MODES =================
 
 // TAKE OFF
@@ -244,6 +249,14 @@ watch(altitude, (newVal, oldVal) => {
 
     <div class="horizon-wrapper">
       <ArtificialHorizon :pitch="telemetryPitch" :roll="telemetryRoll" />
+    </div>
+
+    <div class="right-panel">
+      <ThrottleLevers
+        v-model:leftValue="throttleLeft"
+        v-model:rightValue="throttleRight"
+        v-model:linked="throttleLinked"
+      />
     </div>
 
     <div class="modes-bar">
@@ -426,5 +439,14 @@ watch(altitude, (newVal, oldVal) => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.right-panel {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
 }
 </style>
