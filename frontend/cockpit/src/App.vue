@@ -206,9 +206,23 @@ watch(altitude, (newVal, oldVal) => {
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
     <div class="instruments-wrapper">
-      <InstrumentDisplay label="ALT" :value="displayAltitude" :max="300" />
+      <InstrumentDisplay
+        label="ALT"
+        :value="displayAltitude"
+        :max="300"
+        :size="240"
+        :minLimit="1"
+        :maxLimit="120"
+      />
 
-      <InstrumentDisplay label="SPD" :value="displaySpeed" :max="200" />
+      <InstrumentDisplay
+        label="SPD"
+        :value="displaySpeed"
+        :max="200"
+        :size="240"
+        :minLimit="140"
+        :maxLimit="200"
+      />
     </div>
 
     <div class="horizon-wrapper">

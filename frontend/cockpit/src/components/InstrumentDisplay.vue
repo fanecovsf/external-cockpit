@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from "vue";
 
+const BASE_SIZE = 200;
+
 const props = defineProps({
   label: String,
   value: Number,
@@ -10,28 +12,45 @@ const props = defineProps({
   },
   minAngle: {
     type: Number,
-    default: -120, // início do arco
+    default: -120,
   },
   maxAngle: {
     type: Number,
-    default: 120, // fim do arco
+    default: 120,
   },
+  size: {
+    type: Number,
+    default: BASE_SIZE,
+  },
+  minLimit: Number,
+  maxLimit: Number,
 });
 
-// clamp pra evitar passar do limite
+// escala
+const scale = computed(() => props.size / BASE_SIZE);
+
+// clamp
 const clampedValue = computed(() => {
   return Math.min(props.max, Math.max(0, props.value));
 });
 
-// cálculo do ângulo respeitando limites
+// ângulo
 const angle = computed(() => {
   const percent = clampedValue.value / props.max;
   return props.minAngle + percent * (props.maxAngle - props.minAngle);
 });
 
-// marcações principais (números)
+// ALERTA 🔥
+const isInAlert = computed(() => {
+  if (props.minLimit == null || props.maxLimit == null) return false;
+  return (
+    clampedValue.value >= props.minLimit && clampedValue.value <= props.maxLimit
+  );
+});
+
+// marcações
 const marks = computed(() => {
-  const steps = 6; // quantidade de números
+  const steps = 6;
   const stepValue = props.max / (steps - 1);
 
   return Array.from({ length: steps }, (_, i) => {
@@ -45,9 +64,9 @@ const marks = computed(() => {
 </script>
 
 <template>
-  <div class="gauge">
-    <div class="gauge-face">
-      <!-- TICKS MENORES -->
+  <div class="gauge" :style="{ width: size + 'px', height: size + 'px' }">
+    <div class="gauge-face" :style="{ transform: `scale(${scale})` }">
+      <!-- TICKS -->
       <div
         v-for="n in 31"
         :key="'tick-' + n"
@@ -73,9 +92,13 @@ const marks = computed(() => {
       </div>
 
       <!-- CENTRO -->
-      <div class="center-display">
-        <span class="value">{{ Math.round(value) }}</span>
-        <span class="label">{{ label }}</span>
+      <div class="center-display" :class="{ alert: isInAlert }">
+        <span class="value" :class="{ alert: isInAlert }">
+          {{ Math.round(value) }}
+        </span>
+        <span class="label" :class="{ alert: isInAlert }">
+          {{ label }}
+        </span>
       </div>
     </div>
   </div>
@@ -83,8 +106,6 @@ const marks = computed(() => {
 
 <style scoped>
 .gauge {
-  width: 200px;
-  height: 200px;
   border-radius: 50%;
   background: radial-gradient(circle at center, #222, #000);
   border: 3px solid #444;
@@ -94,12 +115,14 @@ const marks = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .gauge-face {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 200px;
+  height: 200px;
+  transform-origin: center;
 }
 
 /* ===== TICKS ===== */
@@ -110,7 +133,7 @@ const marks = computed(() => {
   background: #00ff9c;
   top: 8px;
   left: 50%;
-  transform-origin: center 92px; /* 🔥 SEGREDO DO ALINHAMENTO */
+  transform-origin: center 92px;
   opacity: 0.5;
 }
 
@@ -119,9 +142,6 @@ const marks = computed(() => {
   position: absolute;
   width: 100%;
   height: 100%;
-  left: 0;
-  top: 0;
-  transform-origin: center;
 }
 
 .mark-label {
@@ -139,8 +159,6 @@ const marks = computed(() => {
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0;
-  left: 0;
   transform-origin: center;
   transition: transform 0.1s linear;
 }
@@ -176,6 +194,7 @@ const marks = computed(() => {
   box-shadow: inset 0 0 10px #00ff9c33;
 }
 
+/* ===== TEXTO ===== */
 .value {
   color: #00ff9c;
   font-size: 20px;
@@ -186,5 +205,53 @@ const marks = computed(() => {
   font-size: 10px;
   color: #00ff9c;
   opacity: 0.7;
+}
+
+/* ===== ALERTA 🔥 ===== */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+    color: #ff3b3b;
+    border-color: #ff3b3b;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* ===== ALERTA 🔥 ===== */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* 🔴 BORDA piscando */
+.center-display.alert {
+  border-color: #ff3b3b;
+  box-shadow: inset 0 0 10px #ff3b3b33;
+}
+
+/* 🔴 anima só o que interessa */
+.value.alert,
+.label.alert {
+  animation: blink 0.6s infinite;
+  color: #ff3b3b;
+}
+
+/* 🔴 borda piscando separado */
+.center-display.alert::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #ff3b3b;
+  animation: blink 0.6s infinite;
+  pointer-events: none;
 }
 </style>

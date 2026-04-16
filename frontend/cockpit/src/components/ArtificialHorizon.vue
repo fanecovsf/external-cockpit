@@ -60,7 +60,7 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
         v-for="p in pitchLines"
         :key="p"
         class="pitch-line"
-        :style="{ top: `${50 - p * 2}%` }"
+        :style="{ top: `${100 - p * 1}%` }"
       >
         <div class="line-mark"></div>
         <span v-if="p % 20 === 0 && p !== 0" class="pitch-text">
@@ -83,8 +83,8 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
 
 <style scoped>
 .horizon {
-  width: 300px;
-  height: 300px;
+  width: 350px;
+  height: 350px;
   border-radius: 50%;
   overflow: hidden;
   border: 4px solid #222;
