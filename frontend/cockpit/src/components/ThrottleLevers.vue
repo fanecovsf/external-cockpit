@@ -1,3 +1,4 @@
+```vue
 <script setup>
 import { ref } from "vue";
 
@@ -20,32 +21,47 @@ const emit = defineEmits([
 const dragging = ref(null);
 const slotRef = ref(null);
 
-// suavização
+const HANDLE_HEIGHT = 46;
+
+// ===== SPRING PHYSICS =====
 const smoothValue = ref({
   left: props.leftValue,
   right: props.rightValue,
 });
 
-const HANDLE_HEIGHT = 46;
+const velocity = ref({
+  left: 0,
+  right: 0,
+});
 
-// ===== SMOOTH LOOP =====
-const lerp = (start, end, t) => start + (end - start) * t;
+// ajuste fino (sensação de peso)
+const STIFFNESS = 0.08;
+const DAMPING = 0.82;
 
 const animate = () => {
-  smoothValue.value.left = lerp(smoothValue.value.left, props.leftValue, 0.2);
+  ["left", "right"].forEach((side) => {
+    const target = side === "left" ? props.leftValue : props.rightValue;
 
-  smoothValue.value.right = lerp(
-    smoothValue.value.right,
-    props.rightValue,
-    0.2,
-  );
+    const delta = target - smoothValue.value[side];
+
+    velocity.value[side] += delta * STIFFNESS;
+    velocity.value[side] *= DAMPING;
+
+    smoothValue.value[side] += velocity.value[side];
+
+    // snap quando chega muito perto
+    if (Math.abs(delta) < 0.01) {
+      smoothValue.value[side] = target;
+      velocity.value[side] = 0;
+    }
+  });
 
   requestAnimationFrame(animate);
 };
 
 animate();
 
-// ===== POSIÇÃO SUAVE =====
+// ===== POSIÇÃO =====
 const getPosition = (val, side) => {
   const current =
     side === "left" ? smoothValue.value.left : smoothValue.value.right;
@@ -236,7 +252,6 @@ const getPercent = (value) => {
 .left-rail {
   left: 30%;
 }
-
 .right-rail {
   left: 70%;
 }
@@ -255,7 +270,6 @@ const getPercent = (value) => {
 .lever.left {
   left: 30%;
 }
-
 .lever.right {
   left: 70%;
 }
@@ -304,7 +318,7 @@ const getPercent = (value) => {
   padding: 8px;
   border-radius: 8px;
   font-size: 12px;
-  cursor: pointer; /* 👈 ajuste */
+  cursor: pointer;
 }
 
 .link-btn.active {
@@ -313,6 +327,7 @@ const getPercent = (value) => {
   box-shadow: 0 0 10px #00ff9c55;
 }
 
+/* STATUS */
 .status {
   font-size: 10px;
   margin-top: 2px;
@@ -320,20 +335,17 @@ const getPercent = (value) => {
   letter-spacing: 0.5px;
 }
 
-/* STATES */
 .status.off {
   color: #ff3b3b;
 }
-
 .status.idle {
   color: #ff9f1a;
 }
-
 .status.cruise {
   color: #3aa0ff;
 }
-
 .status.takeoff {
   color: #00ff9c;
 }
 </style>
+```
