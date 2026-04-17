@@ -104,6 +104,22 @@ const onMove = (e) => {
 const toggleLink = () => {
   emit("update:linked", !props.linked);
 };
+
+// ===== STATUS =====
+const getEngineStatus = (value) => {
+  if (value === 0) return { label: "OFF", class: "off" };
+  if (value <= 7) return { label: "IDLE", class: "idle" };
+  if (value <= 14) return { label: "CRUISE", class: "cruise" };
+  return { label: "TAKEOFF", class: "takeoff" };
+};
+
+// ===== PERCENT =====
+const getPercent = (value) => {
+  if (value === 0) return "0%";
+  if (value === props.max) return "100%";
+
+  return Math.round((value / props.max) * 100) + "%";
+};
 </script>
 
 <template>
@@ -112,11 +128,18 @@ const toggleLink = () => {
     <div class="display">
       <div class="engine">
         <span class="label">E1</span>
-        <span class="value">{{ leftValue }}</span>
+        <span class="value">{{ getPercent(leftValue) }}</span>
+        <span class="status" :class="getEngineStatus(leftValue).class">
+          {{ getEngineStatus(leftValue).label }}
+        </span>
       </div>
+
       <div class="engine">
         <span class="label">E2</span>
-        <span class="value">{{ rightValue }}</span>
+        <span class="value">{{ getPercent(rightValue) }}</span>
+        <span class="status" :class="getEngineStatus(rightValue).class">
+          {{ getEngineStatus(rightValue).label }}
+        </span>
       </div>
     </div>
 
@@ -189,7 +212,7 @@ const toggleLink = () => {
 }
 
 .value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
 }
 
@@ -207,7 +230,7 @@ const toggleLink = () => {
   position: absolute;
   width: 5px;
   height: 100%;
-  background: linear-gradient(180deg, #444, #111);
+  background: #444;
 }
 
 .left-rail {
@@ -288,5 +311,29 @@ const toggleLink = () => {
   color: #00ff9c;
   border-color: #00ff9c;
   box-shadow: 0 0 10px #00ff9c55;
+}
+
+.status {
+  font-size: 10px;
+  margin-top: 2px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+/* STATES */
+.status.off {
+  color: #ff3b3b;
+}
+
+.status.idle {
+  color: #ff9f1a;
+}
+
+.status.cruise {
+  color: #3aa0ff;
+}
+
+.status.takeoff {
+  color: #00ff9c;
 }
 </style>
