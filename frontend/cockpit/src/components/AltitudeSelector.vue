@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import ApButton from "./ApButton.vue";
 
 const props = defineProps({
   modelValue: Number, // <- mais padrão pra reutilização
@@ -17,6 +18,10 @@ const props = defineProps({
   },
   isActive: Boolean,
   locked: Boolean,
+  buttonLabel: {
+    type: String,
+    default: "AP",
+  },
 });
 
 const emit = defineEmits(["update:modelValue", "toggle"]);
@@ -42,7 +47,8 @@ const indicatorPosition = computed(() => {
 });
 
 const handleClick = () => {
-  if (props.locked) return;
+  if (props.locked && !props.isActive) return;
+
   emit("toggle");
 };
 </script>
@@ -72,14 +78,12 @@ const handleClick = () => {
     </div>
 
     <!-- BOTÃO -->
-    <button
-      class="toggle mode-btn"
-      :class="{ locked, active: isActive }"
-      @click="handleClick"
-      :disabled="locked"
-    >
-      {{ isActive ? "ACTIVE" : "ARM" }}
-    </button>
+    <ApButton
+      :label="buttonLabel"
+      :active="isActive"
+      :locked="locked"
+      @toggle="handleClick"
+    />
   </div>
 </template>
 

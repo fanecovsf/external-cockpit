@@ -213,6 +213,7 @@ watch(altitude, (newVal, oldVal) => {
         :max="max"
         :isActive="isActive"
         :locked="autoPilotLocked"
+        :buttonLabel="'AP1'"
         @toggle="toggle"
       />
 
@@ -223,6 +224,7 @@ watch(altitude, (newVal, oldVal) => {
         label="SPD"
         :isActive="autoThrottleActive"
         :locked="autoPilotLocked"
+        :buttonLabel="'A/THR'"
         @toggle="toggleSpeed"
       />
     </div>
