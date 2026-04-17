@@ -9,7 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "minecraft-region": "^0.3.1",
     "nodemon": "^3.1.14",
+    "prismarine-chunk": "^1.40.0",
+    "prismarine-nbt": "^2.8.0",
     "vue": "^3.5.31"
   },
   "devDependencies": {

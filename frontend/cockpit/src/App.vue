@@ -12,6 +12,8 @@ import ToggleSwitch from "./components/ToggleSwitch.vue";
 import FuelBar from "./components/FuelBar.vue";
 import PlaneDisplay from "./components/PlaneDisplay.vue";
 import ThrottleLevers from "./components/ThrottleLevers.vue";
+import NavButton from "./components/NavButton.vue";
+import NavMap from "./components/NavMap.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -127,6 +129,7 @@ onUnmounted(() => {
 });
 
 // ================= ALTITUDE CONTROL =================
+const showNavMap = ref(false);
 
 const altitude = ref(140);
 const isActive = ref(false);
@@ -227,6 +230,9 @@ watch(altitude, (newVal, oldVal) => {
         :buttonLabel="'A/THR'"
         @toggle="toggleSpeed"
       />
+
+      <NavButton :active="showNavMap" @toggle="showNavMap = !showNavMap" />
+      <NavMap v-if="showNavMap" @close="showNavMap = false" />
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
     <div class="instruments-wrapper">
