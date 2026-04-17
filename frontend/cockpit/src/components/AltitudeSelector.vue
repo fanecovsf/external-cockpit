@@ -142,6 +142,7 @@ const handleClick = () => {
   justify-content: space-between;
   padding: 8px 0;
   cursor: ns-resize;
+  outline: none;
 }
 
 /* TICKS */
