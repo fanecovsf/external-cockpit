@@ -167,12 +167,7 @@ const getStatus = () => {
   cursor: not-allowed;
 }
 
-.toggle-switch.locked .switch-base {
-  border-color: #ff4444;
-  box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
-}
-
-.toggle-switch.locked .switch-label {
+.toggle-switch.locked {
   color: #ff4444;
 }
 </style>

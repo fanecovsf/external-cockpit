@@ -82,11 +82,6 @@ const handleClick = () => {
   box-shadow: 0 0 4px rgba(255, 0, 0, 0.4);
 }
 
-/* LOCKED VISUAL */
-.ap-button.locked {
-  filter: brightness(0.85);
-}
-
 /* HOVER */
 .ap-button:hover:not(:disabled) {
   filter: brightness(1.08);

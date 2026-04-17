@@ -220,7 +220,7 @@ watch(altitude, (newVal, oldVal) => {
       <AltitudeSelector
         v-model="speed"
         :min="40"
-        :max="200"
+        :max="160"
         label="SPD"
         :isActive="autoThrottleActive"
         :locked="autoPilotLocked"
@@ -242,10 +242,10 @@ watch(altitude, (newVal, oldVal) => {
       <InstrumentDisplay
         label="SPD"
         :value="displaySpeed"
-        :max="200"
+        :max="160"
         :size="240"
-        :minLimit="140"
-        :maxLimit="200"
+        :minLimit="120"
+        :maxLimit="160"
       />
     </div>
 

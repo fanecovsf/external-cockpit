@@ -106,9 +106,10 @@ const handleClick = () => {
 
 /* DISPLAY */
 .display {
+  width: 60px; /* 👈 largura fixa */
   background: black;
   color: #00ff9c;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid #0a0a0a;
   box-shadow: inset 0 0 8px #00ff9c33;
@@ -149,7 +150,6 @@ const handleClick = () => {
   height: 2px;
   background: #666;
   margin: 0 auto;
-  opacity: 0.5;
 }
 
 /* INDICADOR */

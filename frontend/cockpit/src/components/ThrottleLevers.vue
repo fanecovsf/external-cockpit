@@ -124,7 +124,7 @@ const toggleLink = () => {
 // ===== STATUS =====
 const getEngineStatus = (value) => {
   if (value === 0) return { label: "OFF", class: "off" };
-  if (value <= 7) return { label: "IDLE", class: "idle" };
+  if (value <= 9) return { label: "IDLE", class: "idle" };
   if (value <= 14) return { label: "CRUISE", class: "cruise" };
   return { label: "TAKEOFF", class: "takeoff" };
 };

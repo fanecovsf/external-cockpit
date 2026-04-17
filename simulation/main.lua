@@ -116,7 +116,7 @@ while true do
   -- comortamento aleatório
   if math.random() < 0.1 then
     targetAltitude = randomRange(0, 300)
-    targetSpeed = randomRange(0, 200)
+    targetSpeed = randomRange(0, 160)
 
     targetPitch = (targetAltitude - altitude) * 0.01
     targetRoll = randomRange(-0.5, 0.5)
