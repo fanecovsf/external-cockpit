@@ -3,10 +3,14 @@ from backend.schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDat
 import orjson
 import uvloop
 import asyncio
+from .utils.parse_world import parse_world
+from fastapi.middleware.cors import CORSMiddleware
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+WORLD_CACHE = None
 
 command_schema = CommandSchema()
 auto_pilot_schema = AutoPilotAltitudeSchema()
@@ -54,4 +58,20 @@ async def websocket_endpoint(websocket: WebSocket):
         print("Disconnect:", e)
     finally:
         connections.discard(websocket)
+
+@app.post("/map/load")
+def load_map(payload: dict):
+    global WORLD_CACHE
+
+    path = payload["path"]
+    WORLD_CACHE = parse_world(path)
+
+    return {
+        "chunks": len(WORLD_CACHE)
+    }
+
+
+@app.get("/map")
+def get_map():
+    return WORLD_CACHE or []
         

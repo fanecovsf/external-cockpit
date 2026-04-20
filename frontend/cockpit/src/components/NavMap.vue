@@ -6,17 +6,30 @@ const emit = defineEmits(["close"]);
 const canvasRef = ref(null);
 const containerRef = ref(null);
 
-// posição avião (fallback)
+const camera = ref({
+  x: 0,
+  z: 0,
+});
+
+const isDragging = ref(false);
+const lastMouse = ref({ x: 0, y: 0 });
+
+// ================= STATE =================
 const position = ref({ x: 0, z: 0 });
 
-// rota
+const route = ref(null);
 const inputX = ref(0);
 const inputZ = ref(0);
-const route = ref(null);
 
-const scale = ref(1);
+const scale = ref(0.5);
 
-const close = () => emit("close");
+// ================= MAP DATA =================
+const chunks = ref([]); // vindo do backend
+
+const worldPath = ref("");
+
+// ================= BACKEND URL =================
+const API = "http://localhost:8000";
 
 // ================= ROUTE =================
 const defineRoute = () => {
@@ -30,12 +43,84 @@ const cleanRoute = () => {
   route.value = null;
 };
 
-// ================= KEY =================
+const getChunkColor = (chunk) => {
+  const type = chunk.type || "";
+
+  switch (type) {
+    case "water":
+      return "#2b6fff";
+
+    case "sand":
+      return "#d9c58a";
+
+    case "snow":
+      return "#ffffff";
+
+    case "rock":
+    case "stone":
+      return "#7a7a7a";
+
+    case "land":
+      return "#2ecc71";
+
+    case "mountain":
+      return "#9b7b5b";
+
+    default:
+      // fallback baseado no bloco
+      if (chunk.topBlock?.includes("water")) return "#2b6fff";
+      if (chunk.topBlock?.includes("sand")) return "#d9c58a";
+      if (chunk.topBlock?.includes("stone")) return "#7a7a7a";
+      if (chunk.topBlock?.includes("grass") || chunk.topBlock?.includes("dirt"))
+        return "#2ecc71";
+
+      return "#1f1f1f";
+  }
+};
+
+// ================= IMPORT MAP (CALL BACKEND) =================
+const importMap = async () => {
+  try {
+    const res = await fetch(`${API}/map/load`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: worldPath.value || "/minecraft/saves/world",
+      }),
+    });
+
+    const data = await res.json();
+    console.log("Map loaded:", data);
+  } catch (err) {
+    console.error("Error loading map:", err);
+  }
+};
+
+// ================= LOAD MAP (GET CHUNKS) =================
+const loadMap = async () => {
+  try {
+    const res = await fetch(`${API}/map`);
+    const data = await res.json();
+
+    chunks.value = data || [];
+  } catch (err) {
+    console.error("Error fetching map:", err);
+  }
+};
+
+// ================= CLEAR MAP =================
+const clearMap = () => {
+  chunks.value = [];
+};
+
+// ================= CLOSE =================
+const close = () => emit("close");
+
 const onKey = (e) => {
   if (e.key === "Escape") close();
 };
 
-// ================= CANVAS SETUP (FIX DPI + PROPORTION) =================
+// ================= RESIZE =================
 const resizeCanvas = () => {
   const canvas = canvasRef.value;
   const container = containerRef.value;
@@ -62,8 +147,8 @@ const draw = () => {
 
   const ctx = canvas.getContext("2d");
 
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
 
   ctx.clearRect(0, 0, w, h);
 
@@ -71,13 +156,11 @@ const draw = () => {
   ctx.fillStyle = "#050505";
   ctx.fillRect(0, 0, w, h);
 
-  const cx = w / 2;
-  const cy = h / 2;
+  const cx = w / 2 - camera.value.x;
+  const cy = h / 2 - camera.value.z;
 
-  // GRID (leve e proporcional)
+  // GRID
   ctx.strokeStyle = "rgba(0,255,156,0.06)";
-  ctx.lineWidth = 1;
-
   const gridSize = 60 * scale.value;
 
   const offsetX = cx % gridSize;
@@ -97,44 +180,48 @@ const draw = () => {
     ctx.stroke();
   }
 
-  // AVIÃO (centro)
+  // ================= CHUNKS (FROM BACKEND) =================
+  const baseChunkSize = 8;
+  for (const chunk of chunks.value) {
+    const color = getChunkColor(chunk);
+
+    const size = baseChunkSize * scale.value;
+
+    const x = cx + chunk.chunkX * size;
+    const z = cy + chunk.chunkZ * size;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(x, z, size, size);
+
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.strokeRect(x, z, size, size);
+  }
+
+  // AIRCRAFT
   ctx.fillStyle = "#00ff9c";
   ctx.beginPath();
   ctx.arc(cx, cy, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#00ff9c55";
-  ctx.beginPath();
-  ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // ROUTE LINE (preview simples)
+  // ROUTE
+  const size = baseChunkSize * scale.value;
   if (route.value) {
+    const dx = (route.value.x - position.value.x) * size;
+    const dz = (route.value.z - position.value.z) * size;
+
     ctx.strokeStyle = "#00ff9c";
     ctx.lineWidth = 2;
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-
-    // escala fake (visual only por enquanto)
-    const dx = (route.value.x - position.value.x) * 2;
-    const dz = (route.value.z - position.value.z) * 2;
-
     ctx.lineTo(cx + dx, cy + dz);
     ctx.stroke();
 
-    // target
     ctx.fillStyle = "#ff4444";
     ctx.beginPath();
     ctx.arc(cx + dx, cy + dz, 6, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // TEXT
-  ctx.fillStyle = "#00ff9c";
-  ctx.font = "12px monospace";
-  ctx.fillText(`X: ${position.value.x}`, 16, 22);
-  ctx.fillText(`Z: ${position.value.z}`, 16, 40);
 };
 
 // ================= LOOP =================
@@ -145,11 +232,18 @@ const loop = () => {
   animation = requestAnimationFrame(loop);
 };
 
-// ================= LIFECYCLE =================
+// ================= LIFE =================
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
+
+  const canvas = canvasRef.value;
+
+  canvas.addEventListener("mousedown", onMouseDown);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
+  canvas.addEventListener("wheel", onWheel, { passive: true });
 
   loop();
 });
@@ -158,7 +252,46 @@ onUnmounted(() => {
   window.removeEventListener("keydown", onKey);
   window.removeEventListener("resize", resizeCanvas);
   cancelAnimationFrame(animation);
+
+  const canvas = canvasRef.value;
+
+  if (canvas) {
+    canvas.removeEventListener("mousedown", onMouseDown);
+    canvas.removeEventListener("wheel", onWheel);
+  }
+
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
 });
+
+const onWheel = (e) => {
+  const zoomIntensity = 0.001;
+
+  const newScale = scale.value * (1 - e.deltaY * zoomIntensity);
+
+  scale.value = Math.min(5, Math.max(0.05, newScale));
+};
+
+const onMouseDown = (e) => {
+  isDragging.value = true;
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+};
+
+const onMouseMove = (e) => {
+  if (!isDragging.value) return;
+
+  const dx = e.clientX - lastMouse.value.x;
+  const dy = e.clientY - lastMouse.value.y;
+
+  camera.value.x -= dx;
+  camera.value.z -= dy;
+
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+};
+
+const onMouseUp = () => {
+  isDragging.value = false;
+};
 </script>
 
 <template>
@@ -172,31 +305,27 @@ onUnmounted(() => {
       <div class="content">
         <!-- SIDEBAR -->
         <div class="sidebar">
+          <input v-model="worldPath" placeholder="world path..." />
+
+          <button class="btn import" @click="importMap">IMPORT MAP</button>
+
+          <button class="btn" @click="loadMap">LOAD MAP</button>
+
+          <button class="btn clean" @click="clearMap">CLEAR MAP</button>
+
           <div class="route-display">
-            <div class="title-small">ACTIVE ROUTE</div>
-
-            <div v-if="route" class="coords">
-              X: {{ route.x }}<br />
-              Z: {{ route.z }}
-            </div>
-
-            <div v-else class="coords off">NO ROUTE</div>
+            <div v-if="route">ROUTE: {{ route.x }} / {{ route.z }}</div>
+            <div v-else>NO ROUTE</div>
           </div>
 
-          <div class="inputs">
-            <label>X</label>
-            <input v-model="inputX" type="number" />
+          <input v-model="inputX" placeholder="X" />
+          <input v-model="inputZ" placeholder="Z" />
 
-            <label>Z</label>
-            <input v-model="inputZ" type="number" />
-          </div>
+          <button class="btn define" @click="defineRoute">SET ROUTE</button>
 
-          <button class="btn define" @click="defineRoute">DEFINE ROUTE</button>
-
-          <button class="btn clean" @click="cleanRoute">CLEAN ROUTE</button>
+          <button class="btn clean" @click="cleanRoute">REMOVE ROUTE</button>
         </div>
 
-        <!-- MAP -->
         <div class="map-area" ref="containerRef">
           <canvas ref="canvasRef"></canvas>
         </div>
