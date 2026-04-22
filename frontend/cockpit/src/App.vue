@@ -12,8 +12,8 @@ import ToggleSwitch from "./components/ToggleSwitch.vue";
 import FuelBar from "./components/FuelBar.vue";
 import PlaneDisplay from "./components/PlaneDisplay.vue";
 import ThrottleLevers from "./components/ThrottleLevers.vue";
-import NavButton from "./components/NavButton.vue";
-import NavMap from "./components/NavMap.vue";
+//import NavButton from "./components/NavButton.vue";
+//import NavMap from "./components/NavMap.vue";
 
 // ================= TELEMETRY STATE =================
 
@@ -264,6 +264,7 @@ watch(altitude, (newVal, oldVal) => {
         v-model:leftValue="throttleLeft"
         v-model:rightValue="throttleRight"
         v-model:linked="throttleLinked"
+        :autothrottleActive="autoThrottleActive"
       />
     </div>
 

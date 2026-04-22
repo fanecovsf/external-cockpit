@@ -1,6 +1,14 @@
 ```vue
 <script setup>
-import { ref } from "vue";
+import {
+  connectThrottleTelemetry,
+  disconnectThrottleTelemetry,
+  connectThrottleCommands,
+  disconnectThrottleCommands,
+  sendThrottleCommand,
+} from "../services/throttleSocket";
+
+import { ref, watch, onMounted } from "vue";
 
 const props = defineProps({
   leftValue: Number,
@@ -10,6 +18,7 @@ const props = defineProps({
     default: 15,
   },
   linked: Boolean,
+  autothrottleActive: Boolean,
 });
 
 const emit = defineEmits([
@@ -59,22 +68,23 @@ const animate = () => {
   requestAnimationFrame(animate);
 };
 
-animate();
+onMounted(() => {
+  animate();
+});
 
 // ===== POSIÇÃO =====
-const getPosition = (val, side) => {
-  const current =
-    side === "left" ? smoothValue.value.left : smoothValue.value.right;
+const getPosition = (val) => {
+  const percent = val / props.max;
 
-  const percent = current / props.max;
-
-  const offset = (HANDLE_HEIGHT / slotRef.value?.clientHeight || 0) * 50;
+  const offset = (HANDLE_HEIGHT / (slotRef.value?.clientHeight || 1)) * 50;
 
   return 100 - percent * (100 - offset * 2) - offset;
 };
 
 // ===== DRAG =====
 const startDrag = (e, side) => {
+  if (props.autothrottleActive) return;
+
   e.preventDefault();
   dragging.value = side;
 
@@ -131,11 +141,48 @@ const getEngineStatus = (value) => {
 
 // ===== PERCENT =====
 const getPercent = (value) => {
-  if (value === 0) return "0%";
-  if (value === props.max) return "100%";
+  const num = Number(value);
 
-  return Math.round((value / props.max) * 100) + "%";
+  if (isNaN(num) || props.max === 0) return "0%";
+
+  if (num === 0) return "0%";
+  if (num === props.max) return "100%";
+
+  return Math.round((num / props.max) * 100) + "%";
 };
+
+watch(
+  () => props.autothrottleActive,
+  (active) => {
+    if (active) {
+      disconnectThrottleCommands();
+
+      connectThrottleTelemetry((data) => {
+        console.log(data);
+        if (data.schema === "telemetry") {
+          emit("update:leftValue", Number(data.engine1) || 0);
+          emit("update:rightValue", Number(data.engine2) || 0);
+        }
+      });
+    } else {
+      disconnectThrottleTelemetry();
+      connectThrottleCommands();
+    }
+  },
+);
+
+watch(
+  () => [props.leftValue, props.rightValue],
+  ([left, right]) => {
+    if (!props.autothrottleActive) {
+      sendThrottleCommand({
+        schema: "command",
+        engine1: left,
+        engine2: right,
+      });
+    }
+  },
+);
 </script>
 
 <template>
@@ -166,7 +213,7 @@ const getPercent = (value) => {
 
       <div
         class="lever left"
-        :style="{ top: getPosition(leftValue, 'left') + '%' }"
+        :style="{ top: getPosition(smoothValue.left, 'left') + '%' }"
         @mousedown="(e) => startDrag(e, 'left')"
       >
         <div class="handle"></div>
@@ -174,7 +221,7 @@ const getPercent = (value) => {
 
       <div
         class="lever right"
-        :style="{ top: getPosition(rightValue, 'right') + '%' }"
+        :style="{ top: getPosition(smoothValue.right, 'right') + '%' }"
         @mousedown="(e) => startDrag(e, 'right')"
       >
         <div class="handle"></div>

@@ -18,22 +18,24 @@ telemetry_schema = TelemetryDataSchema()
 
 schemas = ['command', 'auto_pilot', 'telemetry', 'plane']
 
-connections = set()
+telemetry_connections = set()
+throttle_telemetry_connections = set()
+throttle_command_connections = set()
 
 import asyncio
 
-async def broadcast(message: str):
-    tasks = [conn.send_text(message) for conn in connections]
+async def broadcast(message: str, pool: set):
+    tasks = [conn.send_text(message) for conn in pool]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    for conn, result in zip(list(connections), results):
+    for conn, result in zip(list(pool), results):
         if isinstance(result, Exception):
-            connections.remove(conn)
+            pool.remove(conn)
 
-@app.websocket("/ws/telemetry")
+@app.websocket("/ws/telemetry", name="telemetry")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    connections.add(websocket)
+    telemetry_connections.add(websocket)
 
     try:
         while True:
@@ -52,12 +54,70 @@ async def websocket_endpoint(websocket: WebSocket):
             if data.get("schema") != "telemetry" and data.get("schema") != "plane":
                 continue
 
-            await broadcast(raw)
+            await broadcast(raw, telemetry_connections)
 
     except WebSocketDisconnect as e:
         print("Disconnect:", e)
     finally:
-        connections.discard(websocket)
+        telemetry_connections.discard(websocket)
+
+@app.websocket("/ws/throttle-telemetry", name="throttle-telemetry")
+async def throttle_websocket(websocket: WebSocket):
+    await websocket.accept()
+    throttle_telemetry_connections.add(websocket)
+
+    try:
+        while True:
+            try:
+                raw = await websocket.receive_text()
+            except Exception as e:
+                print("Erro receive:", type(e), repr(e))
+                break
+
+            try:
+                data = orjson.loads(raw)
+            except Exception as e:
+                print("Erro JSON:", repr(e))
+                continue
+
+            if data.get("schema") != "telemetry":
+                continue
+
+            await broadcast(raw, throttle_telemetry_connections)
+
+    except WebSocketDisconnect as e:
+        print("Disconnect:", e)
+    finally:
+        throttle_telemetry_connections.discard(websocket)
+
+@app.websocket("/ws/throttle-commands")
+async def throttle_commands_websocket(websocket: WebSocket):
+    await websocket.accept()
+    throttle_command_connections.add(websocket)
+
+    try:
+        while True:
+            try:
+                raw = await websocket.receive_text()
+            except Exception as e:
+                print("Erro receive:", type(e), repr(e))
+                break
+
+            try:
+                data = orjson.loads(raw)
+            except Exception as e:
+                print("Erro JSON:", repr(e))
+                continue
+
+            if data.get("schema") != "command":
+                continue
+
+            await broadcast(raw, throttle_command_connections)
+
+    except WebSocketDisconnect as e:
+        print("Disconnect:", e)
+    finally:
+        throttle_command_connections.discard(websocket)
 
 @app.post("/map/load")
 def load_map(payload: dict):
