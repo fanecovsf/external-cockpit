@@ -158,7 +158,6 @@ watch(
       disconnectThrottleCommands();
 
       connectThrottleTelemetry((data) => {
-        console.log(data);
         if (data.schema === "telemetry") {
           emit("update:leftValue", Number(data.engine1) || 0);
           emit("update:rightValue", Number(data.engine2) || 0);
