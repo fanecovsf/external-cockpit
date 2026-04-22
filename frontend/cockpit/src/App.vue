@@ -231,8 +231,8 @@ watch(altitude, (newVal, oldVal) => {
         @toggle="toggleSpeed"
       />
 
-      <NavButton :active="showNavMap" @toggle="showNavMap = !showNavMap" />
-      <NavMap v-if="showNavMap" @close="showNavMap = false" />
+      <!--NavButton :active="showNavMap" @toggle="showNavMap = !showNavMap" />
+      <NavMap v-if="showNavMap" @close="showNavMap = false" /-->
     </div>
     <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
     <div class="instruments-wrapper">
