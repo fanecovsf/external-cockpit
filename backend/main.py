@@ -21,6 +21,7 @@ schemas = ['command', 'auto_pilot', 'telemetry', 'plane']
 telemetry_connections = set()
 throttle_telemetry_connections = set()
 throttle_command_connections = set()
+command_connections = set()
 
 import asyncio
 
@@ -31,6 +32,43 @@ async def broadcast(message: str, pool: set):
     for conn, result in zip(list(pool), results):
         if isinstance(result, Exception):
             pool.remove(conn)
+
+@app.websocket("/ws/commands", name="commands")
+async def commands_websocket(websocket: WebSocket):
+    '''
+    Available commands:
+    - Autopilot: { command: "ap", status: "on"/"off", altitude: number }
+    - Autothrottle: { command: "at", status: "on"/"off", speed: number }
+    - Takeoff: { command: "to", status: "arm"/"on"/"off" }
+    - Landing: { command: "ld", status: "on"/"off" }
+    - Fuel Transfer: { command: "ft", status: "on"/"off" }
+    '''
+    await websocket.accept()
+    command_connections.add(websocket)
+
+    try:
+        while True:
+            try:
+                raw = await websocket.receive_text()
+            except Exception as e:
+                print("Erro receive:", type(e), repr(e))
+                break
+
+            try:
+                data = orjson.loads(raw)
+            except Exception as e:
+                print("Erro JSON:", repr(e))
+                continue
+
+            if data.get("schema") != "command":
+                continue
+
+            await broadcast(raw, command_connections)
+
+    except WebSocketDisconnect as e:
+        print("Disconnect:", e)
+    finally:
+        command_connections.discard(websocket)
 
 @app.websocket("/ws/telemetry", name="telemetry")
 async def websocket_endpoint(websocket: WebSocket):
