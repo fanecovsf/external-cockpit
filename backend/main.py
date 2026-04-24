@@ -73,6 +73,17 @@ async def commands_websocket(websocket: WebSocket):
 
 @app.websocket("/ws/telemetry", name="telemetry")
 async def websocket_endpoint(websocket: WebSocket):
+    '''
+    This websocket is used to receive telemetry from the plane and broadcast it to frontend. The expected telemetry format is as follows:
+    {
+        schema: "telemetry",
+        altitude: number,
+        speed: number,
+        fuel: number,
+        pitch: number,
+        roll: number
+    }
+    '''
     await websocket.accept()
     telemetry_connections.add(websocket)
 
@@ -102,6 +113,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.websocket("/ws/throttle-telemetry", name="throttle-telemetry")
 async def throttle_websocket(websocket: WebSocket):
+    '''
+    This websocket is used to receive throttle telemetry from the plane and broadcast it to frontend. The expected telemetry format is as follows:
+    {
+        schema: "telemetry",
+        engine1: number (0-15),
+        engine2: number (0-15)
+    }
+    '''
     await websocket.accept()
     throttle_telemetry_connections.add(websocket)
 
@@ -131,6 +150,14 @@ async def throttle_websocket(websocket: WebSocket):
 
 @app.websocket("/ws/throttle-commands")
 async def throttle_commands_websocket(websocket: WebSocket):
+    '''
+    This websocket is used to receive throttle commands from the frontend and broadcast them to all connected clients. The expected command format is as follows:
+    {
+        schema: "command",
+        engine1: number (0-15),
+        engine2: number (0-15)
+    }
+    '''
     await websocket.accept()
     throttle_command_connections.add(websocket)
 
