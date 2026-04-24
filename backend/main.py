@@ -1,9 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from backend.schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
+from schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
 import orjson
 import uvloop
 import asyncio
-from .utils.parse_world import parse_world
+#from .utils.parse_world import parse_world
 from fastapi.middleware.cors import CORSMiddleware
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -185,6 +185,8 @@ async def throttle_commands_websocket(websocket: WebSocket):
     finally:
         throttle_command_connections.discard(websocket)
 
+'''
+Future features: map loading and broadcasting
 @app.post("/map/load")
 def load_map(payload: dict):
     global WORLD_CACHE
@@ -200,4 +202,4 @@ def load_map(payload: dict):
 @app.get("/map")
 def get_map():
     return WORLD_CACHE or []
-        
+'''        

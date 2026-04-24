@@ -1,7 +1,9 @@
+import { wsUrl } from "../utils/wsUrl";
+
 let commandSocket = null;
 
 export const connectCommands = () => {
-  commandSocket = new WebSocket("ws://localhost:8000/ws/commands");
+  commandSocket = new WebSocket(wsUrl + "/commands");
 };
 
 export const sendCommand = (data) => {

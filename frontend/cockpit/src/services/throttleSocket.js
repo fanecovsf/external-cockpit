@@ -1,9 +1,10 @@
-// services/throttleSocket.js
+import { wsUrl } from "../utils/wsUrl";
+
 let telemetrySocket = null;
 let commandSocket = null;
 
 export const connectThrottleTelemetry = (onMessage) => {
-  telemetrySocket = new WebSocket("ws://localhost:8000/ws/throttle-telemetry");
+  telemetrySocket = new WebSocket(wsUrl + "/throttle-telemetry");
 
   telemetrySocket.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -19,7 +20,7 @@ export const disconnectThrottleTelemetry = () => {
 };
 
 export const connectThrottleCommands = () => {
-  commandSocket = new WebSocket("ws://localhost:8000/ws/throttle-commands");
+  commandSocket = new WebSocket(wsUrl + "/throttle-commands");
 };
 
 export const sendThrottleCommand = (data) => {

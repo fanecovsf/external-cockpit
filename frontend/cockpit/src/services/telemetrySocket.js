@@ -1,8 +1,10 @@
+import { wsUrl } from "../utils/wsUrl";
+
 let socket = null;
 let retryTimeout = null;
 
 export const connectTelemetry = (onMessage) => {
-  socket = new WebSocket("ws://localhost:8000/ws/telemetry");
+  socket = new WebSocket(wsUrl + "/telemetry");
 
   socket.onopen = () => {
     console.log("🟢 Telemetry connected");

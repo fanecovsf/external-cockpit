@@ -168,20 +168,34 @@ watch(
       connectThrottleCommands();
     }
   },
+  { immediate: true },
+);
+
+const localLeft = ref(props.leftValue);
+const localRight = ref(props.rightValue);
+
+watch(
+  () => props.leftValue,
+  (v) => (localLeft.value = v),
 );
 
 watch(
-  () => [props.leftValue, props.rightValue],
-  ([left, right]) => {
-    if (!props.autothrottleActive) {
-      sendThrottleCommand({
-        schema: "command",
-        engine1: left,
-        engine2: right,
-      });
-    }
-  },
+  () => props.rightValue,
+  (v) => (localRight.value = v),
 );
+
+watch([localLeft, localRight], ([left, right]) => {
+  if (!props.autothrottleActive) {
+    sendThrottleCommand({
+      schema: "command",
+      engine1: left,
+      engine2: right,
+    });
+
+    emit("update:leftValue", left);
+    emit("update:rightValue", right);
+  }
+});
 </script>
 
 <template>
