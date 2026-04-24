@@ -36,6 +36,7 @@ async def broadcast(message: str, pool: set):
 @app.websocket("/ws/commands", name="commands")
 async def commands_websocket(websocket: WebSocket):
     '''
+    This websocket is used to receive commands from the frontend and broadcast them to all connected clients. The expected command format is as follows:
     Available commands:
     - Autopilot: { command: "ap", status: "on"/"off", altitude: number }
     - Autothrottle: { command: "at", status: "on"/"off", speed: number }

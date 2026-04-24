@@ -5,6 +5,11 @@ import {
   connectTelemetry,
   disconnectTelemetry,
 } from "./services/telemetrySocket";
+import {
+  connectCommands,
+  sendCommand,
+  disconnectCommands,
+} from "./services/commandSocket";
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
@@ -117,12 +122,13 @@ const loop = () => {
 
 onMounted(() => {
   connectTelemetry(handleTelemetry);
+  connectCommands();
   animationFrame = requestAnimationFrame(loop);
 });
 
 onUnmounted(() => {
   disconnectTelemetry();
-
+  disconnectCommands();
   if (animationFrame) {
     cancelAnimationFrame(animationFrame);
   }
@@ -202,6 +208,61 @@ watch(altitude, (newVal, oldVal) => {
   if (isActive.value && newVal !== oldVal) {
     isActive.value = false;
   }
+});
+
+watch([isActive, altitude], ([active, alt]) => {
+  sendCommand({
+    schema: "command",
+    command: "ap",
+    status: active ? "on" : "off",
+    altitude: alt,
+  });
+});
+
+watch([autoThrottleActive, speed], ([active, spd]) => {
+  sendCommand({
+    schema: "command",
+    command: "at",
+    status: active ? "on" : "off",
+    speed: spd,
+  });
+});
+
+let lastTakeoffStatus = null;
+
+watch(takeOffState, (state) => {
+  let status;
+
+  if (state === "ARMED") status = "arm";
+  else if (state === "ON" || state === "LOCKED") status = "on";
+  else status = "off";
+
+  if (status === lastTakeoffStatus) return;
+  lastTakeoffStatus = status;
+
+  sendCommand({
+    schema: "command",
+    command: "to",
+    status,
+  });
+});
+
+watch(landingMode, (active) => {
+  if (landingLocked.value) return;
+
+  sendCommand({
+    schema: "command",
+    command: "ld",
+    status: active ? "on" : "off",
+  });
+});
+
+watch(fuelTransfer, (active) => {
+  sendCommand({
+    schema: "command",
+    command: "ft",
+    status: active ? "on" : "off",
+  });
 });
 </script>
 <template>
