@@ -12,6 +12,11 @@ import {
   disconnectCommands,
 } from "./services/commandSocket";
 
+import {
+  connectThrottleTelemetry,
+  disconnectThrottleTelemetry,
+} from "./services/throttleSocket";
+
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
@@ -76,6 +81,13 @@ const handleTelemetry = (data) => {
     if (data.pitch !== undefined) telemetryPitch.value = data.pitch;
     if (data.roll !== undefined) telemetryRoll.value = data.roll;
   }
+};
+
+const handleThrottleTelemetry = (data) => {
+  if (data.schema !== "telemetry") return;
+
+  throttleLeft.value = data.engine1 ?? throttleLeft.value;
+  throttleRight.value = data.engine2 ?? throttleRight.value;
 };
 
 // ================= COMMAND HANDLER (WS -> STATE) =================
@@ -180,12 +192,14 @@ watch(landingMode, (active) => {
 
 onMounted(() => {
   connectTelemetry(handleTelemetry);
+  connectThrottleTelemetry(handleThrottleTelemetry);
   connectCommands(handleCommand);
   animationFrame = requestAnimationFrame(loop);
 });
 
 onUnmounted(() => {
   disconnectTelemetry();
+  disconnectThrottleTelemetry();
   disconnectCommands();
   cancelAnimationFrame(animationFrame);
 });

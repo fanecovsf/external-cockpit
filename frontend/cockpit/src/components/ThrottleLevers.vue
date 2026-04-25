@@ -1,41 +1,19 @@
-```vue
 <script setup>
-import {
-  connectThrottleTelemetry,
-  disconnectThrottleTelemetry,
-  connectThrottleCommands,
-  disconnectThrottleCommands,
-  sendThrottleCommand,
-} from "../services/throttleSocket";
-
-import { ref, watch, onMounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 
 const props = defineProps({
   leftValue: Number,
   rightValue: Number,
-  max: {
-    type: Number,
-    default: 15,
-  },
+  max: { type: Number, default: 15 },
   linked: Boolean,
   autothrottleActive: Boolean,
 });
 
-const emit = defineEmits([
-  "update:leftValue",
-  "update:rightValue",
-  "update:linked",
-]);
+// ================= SMOOTH VISUAL =================
 
-const dragging = ref(null);
-const slotRef = ref(null);
-
-const HANDLE_HEIGHT = 46;
-
-// ===== SPRING PHYSICS =====
-const smoothValue = ref({
-  left: props.leftValue,
-  right: props.rightValue,
+const smooth = ref({
+  left: 0,
+  right: 0,
 });
 
 const velocity = ref({
@@ -43,24 +21,22 @@ const velocity = ref({
   right: 0,
 });
 
-// ajuste fino (sensação de peso)
 const STIFFNESS = 0.08;
 const DAMPING = 0.82;
 
 const animate = () => {
   ["left", "right"].forEach((side) => {
-    const target = side === "left" ? props.leftValue : props.rightValue;
+    const target = props[side + "Value"] ?? 0;
 
-    const delta = target - smoothValue.value[side];
+    const delta = target - smooth.value[side];
 
     velocity.value[side] += delta * STIFFNESS;
     velocity.value[side] *= DAMPING;
 
-    smoothValue.value[side] += velocity.value[side];
+    smooth.value[side] += velocity.value[side];
 
-    // snap quando chega muito perto
     if (Math.abs(delta) < 0.01) {
-      smoothValue.value[side] = target;
+      smooth.value[side] = target;
       velocity.value[side] = 0;
     }
   });
@@ -68,11 +44,14 @@ const animate = () => {
   requestAnimationFrame(animate);
 };
 
-onMounted(() => {
-  animate();
-});
+onMounted(() => animate());
 
-// ===== POSIÇÃO =====
+// ================= POSITION =================
+
+const HANDLE_HEIGHT = 46;
+
+const slotRef = ref(null);
+
 const getPosition = (val) => {
   const percent = val / props.max;
 
@@ -81,57 +60,8 @@ const getPosition = (val) => {
   return 100 - percent * (100 - offset * 2) - offset;
 };
 
-// ===== DRAG =====
-const startDrag = (e, side) => {
-  if (props.autothrottleActive) return;
+// ================= STATUS =================
 
-  e.preventDefault();
-  dragging.value = side;
-
-  window.addEventListener("mousemove", onMove);
-  window.addEventListener("mouseup", stopDrag);
-};
-
-const stopDrag = () => {
-  dragging.value = null;
-  window.removeEventListener("mousemove", onMove);
-  window.removeEventListener("mouseup", stopDrag);
-};
-
-const onMove = (e) => {
-  if (!dragging.value || !slotRef.value) return;
-
-  const rect = slotRef.value.getBoundingClientRect();
-
-  const y = e.clientY - rect.top;
-
-  const minY = HANDLE_HEIGHT / 2;
-  const maxY = rect.height - HANDLE_HEIGHT / 2;
-
-  const clampedY = Math.max(minY, Math.min(maxY, y));
-
-  const percent = (clampedY - minY) / (maxY - minY);
-
-  const value = Math.round((1 - percent) * props.max);
-
-  if (props.linked) {
-    emit("update:leftValue", value);
-    emit("update:rightValue", value);
-  } else {
-    if (dragging.value === "left") {
-      emit("update:leftValue", value);
-    } else {
-      emit("update:rightValue", value);
-    }
-  }
-};
-
-// ===== LOCK =====
-const toggleLink = () => {
-  emit("update:linked", !props.linked);
-};
-
-// ===== STATUS =====
 const getEngineStatus = (value) => {
   if (value === 0) return { label: "OFF", class: "off" };
   if (value <= 9) return { label: "IDLE", class: "idle" };
@@ -139,63 +69,13 @@ const getEngineStatus = (value) => {
   return { label: "TAKEOFF", class: "takeoff" };
 };
 
-// ===== PERCENT =====
 const getPercent = (value) => {
   const num = Number(value);
 
-  if (isNaN(num) || props.max === 0) return "0%";
-
-  if (num === 0) return "0%";
-  if (num === props.max) return "100%";
+  if (!props.max || isNaN(num)) return "0%";
 
   return Math.round((num / props.max) * 100) + "%";
 };
-
-watch(
-  () => props.autothrottleActive,
-  (active) => {
-    if (active) {
-      disconnectThrottleCommands();
-
-      connectThrottleTelemetry((data) => {
-        if (data.schema === "telemetry") {
-          emit("update:leftValue", Number(data.engine1) || 0);
-          emit("update:rightValue", Number(data.engine2) || 0);
-        }
-      });
-    } else {
-      disconnectThrottleTelemetry();
-      connectThrottleCommands();
-    }
-  },
-  { immediate: true },
-);
-
-const localLeft = ref(props.leftValue);
-const localRight = ref(props.rightValue);
-
-watch(
-  () => props.leftValue,
-  (v) => (localLeft.value = v),
-);
-
-watch(
-  () => props.rightValue,
-  (v) => (localRight.value = v),
-);
-
-watch([localLeft, localRight], ([left, right]) => {
-  if (!props.autothrottleActive) {
-    sendThrottleCommand({
-      schema: "command",
-      engine1: left,
-      engine2: right,
-    });
-
-    emit("update:leftValue", left);
-    emit("update:rightValue", right);
-  }
-});
 </script>
 
 <template>
@@ -219,39 +99,29 @@ watch([localLeft, localRight], ([left, right]) => {
       </div>
     </div>
 
-    <!-- SLOT -->
+    <!-- VISUAL SLOT -->
     <div class="slot" ref="slotRef">
       <div class="rail left-rail"></div>
       <div class="rail right-rail"></div>
 
-      <div
-        class="lever left"
-        :style="{ top: getPosition(smoothValue.left, 'left') + '%' }"
-        @mousedown="(e) => startDrag(e, 'left')"
-      >
+      <div class="lever left" :style="{ top: getPosition(smooth.left) + '%' }">
         <div class="handle"></div>
       </div>
 
       <div
         class="lever right"
-        :style="{ top: getPosition(smoothValue.right, 'right') + '%' }"
-        @mousedown="(e) => startDrag(e, 'right')"
+        :style="{ top: getPosition(smooth.right) + '%' }"
       >
         <div class="handle"></div>
       </div>
     </div>
-
-    <!-- LOCK -->
-    <button class="link-btn" :class="{ active: linked }" @click="toggleLink">
-      LOCK
-    </button>
   </div>
 </template>
 
 <style scoped>
 .throttle {
   width: 160px;
-  height: 415px;
+  height: 370px;
   background: linear-gradient(145deg, #2a2a2a, #0f0f0f);
   border: 2px solid #444;
   border-radius: 16px;
