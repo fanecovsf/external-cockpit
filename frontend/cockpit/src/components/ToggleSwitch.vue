@@ -1,4 +1,3 @@
-```vue
 <script setup>
 const props = defineProps({
   label: String,
@@ -6,12 +5,10 @@ const props = defineProps({
   locked: Boolean,
 });
 
-const emit = defineEmits(["update:modelValue", "click"]);
+const emit = defineEmits(["click"]);
 
 const handleClick = () => {
   if (props.locked) return;
-
-  emit("update:modelValue", !props.modelValue);
   emit("click");
 };
 
@@ -23,7 +20,7 @@ const getStatus = () => {
 </script>
 
 <template>
-  <div class="toggle-switch" @click="handleClick" :class="{ locked: locked }">
+  <div class="toggle-switch" @click="handleClick" :class="{ locked }">
     <div class="status-display" :class="getStatus().class">
       {{ getStatus().text }}
     </div>
@@ -52,7 +49,6 @@ const getStatus = () => {
   cursor: pointer;
 }
 
-/* DISPLAY */
 .status-display {
   width: 50px;
   height: 18px;
@@ -80,7 +76,6 @@ const getStatus = () => {
   box-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
 }
 
-/* BASE */
 .switch-base {
   width: 60px;
   height: 90px;
@@ -93,7 +88,6 @@ const getStatus = () => {
     inset 5px 5px 10px rgba(255, 255, 255, 0.05);
 }
 
-/* SCREWS */
 .screw {
   width: 6px;
   height: 6px;
@@ -119,7 +113,6 @@ const getStatus = () => {
   right: 5px;
 }
 
-/* TRACK */
 .switch-track {
   position: absolute;
   left: 50%;
@@ -132,12 +125,11 @@ const getStatus = () => {
   box-shadow: inset 0 0 8px #000;
 }
 
-/* KNOB (FIXED) */
 .switch-knob {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 24px; /* menor que o rail */
+  width: 24px;
   height: 14px;
   background: linear-gradient(145deg, #bbb, #555);
   border-radius: 4px;
@@ -146,29 +138,21 @@ const getStatus = () => {
     0 2px 4px rgba(0, 0, 0, 0.8),
     inset 0 0 4px rgba(255, 255, 255, 0.2);
 
-  top: 36px; /* posição OFF */
+  top: 36px;
   transition: top 0.2s ease;
 }
 
-/* MOVE */
 .switch-knob.on {
-  top: 10px; /* posição ON */
+  top: 10px;
 }
 
-/* LABEL */
 .switch-label {
   font-size: 11px;
   color: #bbb;
   letter-spacing: 1px;
 }
 
-/* LOCKED */
 .toggle-switch.locked {
   cursor: not-allowed;
 }
-
-.toggle-switch.locked {
-  color: #ff4444;
-}
 </style>
-```

@@ -1,15 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
-import { watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+
 import {
   connectTelemetry,
   disconnectTelemetry,
 } from "./services/telemetrySocket";
+
 import {
   connectCommands,
   sendCommand,
   disconnectCommands,
 } from "./services/commandSocket";
+
 import ArtificialHorizon from "./components/ArtificialHorizon.vue";
 import AltitudeSelector from "./components/AltitudeSelector.vue";
 import InstrumentDisplay from "./components/InstrumentDisplay.vue";
@@ -17,48 +19,47 @@ import ToggleSwitch from "./components/ToggleSwitch.vue";
 import FuelBar from "./components/FuelBar.vue";
 import PlaneDisplay from "./components/PlaneDisplay.vue";
 import ThrottleLevers from "./components/ThrottleLevers.vue";
-//import NavButton from "./components/NavButton.vue";
-//import NavMap from "./components/NavMap.vue";
 
-// ================= TELEMETRY STATE =================
+// ================= TELEMETRY =================
 
 const lastTelemetryTime = ref(Date.now());
-const TIMEOUT = 10000; // 10 segundos
+const TIMEOUT = 10000;
 
 const telemetryAltitude = ref(0);
 const telemetrySpeed = ref(0);
 const telemetryPitch = ref(0);
 const telemetryRoll = ref(0);
 
-// valores exibidos (suavizados)
 const displayAltitude = ref(0);
 const displaySpeed = ref(0);
 
 const planeName = ref(null);
 
-// ================= UTILS ================
-const randomizeTelemetry = () => {
-  telemetryAltitude.value = Math.random() * 300;
-  telemetrySpeed.value = Math.random() * 200;
-};
+// ================= COMMAND STATE (WS SOURCE OF TRUTH) =================
 
-const zeroTelemetry = () => {
-  telemetryAltitude.value = 0;
-  telemetrySpeed.value = 0;
-};
+const apAltitude = ref(0);
+const apActive = ref(false);
+
+const atSpeed = ref(0);
+const atActive = ref(false);
+
+const takeOffState = ref("OFF"); // OFF | ARMED | ON | LOCKED
+const landingMode = ref(false);
 
 // ================= FUEL =================
 
 const maxFuel = 88000;
 const fuel = ref(maxFuel / 2);
-
 const fuelTransfer = ref(false);
 
-const toggleFuelTransfer = () => {
-  fuelTransfer.value = !fuelTransfer.value;
-};
+// ================= THROTTLE =================
 
-// ================= HANDLE TELEMETRY =================
+const throttleLeft = ref(0);
+const throttleRight = ref(0);
+const throttleLinked = ref(true);
+const autoThrottleActive = ref(false);
+
+// ================= TELEMETRY HANDLER =================
 
 const handleTelemetry = (data) => {
   lastTelemetryTime.value = Date.now();
@@ -69,168 +70,68 @@ const handleTelemetry = (data) => {
   }
 
   if (data.schema === "telemetry") {
-    if (data.altitude !== undefined) {
-      telemetryAltitude.value = data.altitude;
-    }
-
-    if (data.speed !== undefined) {
-      telemetrySpeed.value = data.speed;
-    }
-
-    if (data.fuel !== undefined) {
-      fuel.value = data.fuel;
-    }
-
-    if (data.pitch !== undefined) {
-      telemetryPitch.value = data.pitch;
-    }
-
-    if (data.roll !== undefined) {
-      telemetryRoll.value = data.roll;
-    }
+    if (data.altitude !== undefined) telemetryAltitude.value = data.altitude;
+    if (data.speed !== undefined) telemetrySpeed.value = data.speed;
+    if (data.fuel !== undefined) fuel.value = data.fuel;
+    if (data.pitch !== undefined) telemetryPitch.value = data.pitch;
+    if (data.roll !== undefined) telemetryRoll.value = data.roll;
   }
 };
 
-// ================= MAIN LOOP (HIGH PERFORMANCE) =================
+// ================= COMMAND HANDLER (WS -> STATE) =================
+
+const handleCommand = (data) => {
+  if (data.schema !== "command") return;
+
+  switch (data.command) {
+    case "ap":
+      apAltitude.value = data.altitude ?? apAltitude.value;
+      apActive.value = data.status === "on";
+      break;
+
+    case "at":
+      atSpeed.value = data.speed ?? atSpeed.value;
+      atActive.value = data.status === "on";
+      break;
+
+    case "to":
+      if (data.status === "arm") takeOffState.value = "ARMED";
+      else if (data.status === "on") takeOffState.value = "ON";
+      else takeOffState.value = "OFF";
+      break;
+
+    case "ld":
+      landingMode.value = data.status === "on";
+      break;
+  }
+};
+
+// ================= MAIN LOOP =================
 
 let animationFrame = null;
 
 const loop = () => {
   const now = Date.now();
 
-  // 🚨 TIMEOUT
   if (now - lastTelemetryTime.value > TIMEOUT) {
     planeName.value = null;
-
     telemetryAltitude.value = 0;
     telemetrySpeed.value = 0;
     telemetryPitch.value = 0;
     telemetryRoll.value = 0;
-
     fuel.value = 0;
   }
 
   displayAltitude.value +=
     (telemetryAltitude.value - displayAltitude.value) * 0.08;
-
   displaySpeed.value += (telemetrySpeed.value - displaySpeed.value) * 0.1;
 
   animationFrame = requestAnimationFrame(loop);
 };
 
-const handleCommand = (data) => {
-  if (data.schema !== "command") return;
+// ================= COMMAND SENDERS =================
 
-  if (data.command === "ap") {
-    apAltitude.value = data.altitude ?? apAltitude.value;
-    apActive.value = data.status === "on";
-  }
-
-  if (data.command === "at") {
-    atSpeed.value = data.speed ?? atSpeed.value;
-    atActive.value = data.status === "on";
-  }
-};
-
-// ================= LIFECYCLE =================
-
-onMounted(() => {
-  connectTelemetry(handleTelemetry);
-  connectCommands(handleCommand);
-  animationFrame = requestAnimationFrame(loop);
-});
-
-onUnmounted(() => {
-  disconnectTelemetry();
-  disconnectCommands();
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame);
-  }
-});
-
-// ================= ALTITUDE CONTROL =================
-const apAltitude = ref(0);
-const apActive = ref(false);
-
-const atSpeed = ref(0);
-const atActive = ref(false);
-
-const showNavMap = ref(false);
-
-const altitude = ref(140);
-const isActive = ref(false);
-
-const min = 140;
-const max = 300;
-
-const toggle = () => {
-  isActive.value = !isActive.value;
-};
-
-const speed = ref(100);
-const autoThrottleActive = ref(false);
-
-const toggleSpeed = () => {
-  autoThrottleActive.value = !autoThrottleActive.value;
-};
-
-const throttleLeft = ref(0);
-const throttleRight = ref(0);
-const throttleLinked = ref(true);
-
-// ================= MODES =================
-
-// TAKE OFF
-const takeOffState = ref("OFF");
-// OFF | ARMED | ON | LOCKED
-
-const canTakeOff = computed(() => {
-  return telemetryAltitude.value <= 0 && telemetrySpeed.value <= 0;
-});
-
-const toggleTakeOffArm = () => {
-  if (!canTakeOff.value) return;
-
-  if (takeOffState.value === "OFF") {
-    takeOffState.value = "ARMED";
-  } else if (takeOffState.value === "ARMED") {
-    takeOffState.value = "OFF";
-  }
-};
-
-const startTakeOff = () => {
-  if (takeOffState.value !== "ARMED") return;
-
-  takeOffState.value = "ON";
-
-  setTimeout(() => {
-    takeOffState.value = "LOCKED";
-  }, 1500);
-};
-
-// LANDING MODE
-const landingMode = ref(false);
-// ================= LOCK STATES =================
-
-const autoPilotLocked = computed(() => {
-  return telemetryAltitude.value <= 140;
-});
-
-const takeOffLocked = computed(() => {
-  return !canTakeOff.value && takeOffState.value === "OFF";
-});
-
-const landingLocked = computed(() => {
-  return telemetryAltitude.value <= 140;
-});
-
-watch(altitude, (newVal, oldVal) => {
-  if (isActive.value && newVal !== oldVal) {
-    isActive.value = false;
-  }
-});
-
-watch([isActive, altitude], ([active, alt]) => {
+watch([apAltitude, apActive], ([active, alt]) => {
   sendCommand({
     schema: "command",
     command: "ap",
@@ -239,7 +140,7 @@ watch([isActive, altitude], ([active, alt]) => {
   });
 });
 
-watch([autoThrottleActive, speed], ([active, spd]) => {
+watch([atSpeed, autoThrottleActive], ([active, spd]) => {
   sendCommand({
     schema: "command",
     command: "at",
@@ -248,17 +149,13 @@ watch([autoThrottleActive, speed], ([active, spd]) => {
   });
 });
 
-let lastTakeoffStatus = null;
-
 watch(takeOffState, (state) => {
-  let status;
-
-  if (state === "ARMED") status = "arm";
-  else if (state === "ON" || state === "LOCKED") status = "on";
-  else status = "off";
-
-  if (status === lastTakeoffStatus) return;
-  lastTakeoffStatus = status;
+  let status =
+    state === "ARMED"
+      ? "arm"
+      : state === "ON" || state === "LOCKED"
+        ? "on"
+        : "off";
 
   sendCommand({
     schema: "command",
@@ -268,8 +165,6 @@ watch(takeOffState, (state) => {
 });
 
 watch(landingMode, (active) => {
-  if (landingLocked.value) return;
-
   sendCommand({
     schema: "command",
     command: "ld",
@@ -284,12 +179,26 @@ watch(fuelTransfer, (active) => {
     status: active ? "on" : "off",
   });
 });
+
+// ================= LIFECYCLE =================
+
+onMounted(() => {
+  connectTelemetry(handleTelemetry);
+  connectCommands(handleCommand);
+  animationFrame = requestAnimationFrame(loop);
+});
+
+onUnmounted(() => {
+  disconnectTelemetry();
+  disconnectCommands();
+  cancelAnimationFrame(animationFrame);
+});
 </script>
+
 <template>
   <div class="cockpit">
     <PlaneDisplay :plane="planeName" />
-    <!--<button class="test-btn" @click="randomizeTelemetry">TEST TELEMETRY</button>-->
-    <!--<button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>-->
+
     <div class="left-panel">
       <AltitudeSelector
         :value="apAltitude"
@@ -310,11 +219,8 @@ watch(fuelTransfer, (active) => {
         :isActive="atActive"
         :locked="atActive"
       />
-
-      <!--NavButton :active="showNavMap" @toggle="showNavMap = !showNavMap" />
-      <NavMap v-if="showNavMap" @close="showNavMap = false" /-->
     </div>
-    <!-- CENTER INSTRUMENTS (NÃO INTERFERE NO RESTO) -->
+
     <div class="instruments-wrapper">
       <InstrumentDisplay
         label="ALT"
@@ -350,37 +256,25 @@ watch(fuelTransfer, (active) => {
 
     <div class="modes-bar">
       <div class="takeoff-group">
-        <!-- TOGGLE ARM -->
         <ToggleSwitch
           label="TAKE OFF ARM"
-          :modelValue="takeOffState === 'ARMED' || takeOffState === 'ON'"
-          :locked="takeOffLocked"
-          @click="toggleTakeOffArm"
+          :modelValue="takeOffState !== 'OFF'"
+          :locked="takeOffState === 'ON'"
         />
-        <!-- BOTÃO START -->
-        <button
-          class="start-btn"
-          :disabled="takeOffState !== 'ARMED'"
-          @click="startTakeOff"
-        >
+
+        <button class="start-btn" :disabled="takeOffState !== 'ARMED'">
           START
         </button>
       </div>
 
-      <!-- LANDING -->
       <ToggleSwitch
         label="LANDING MODE"
-        v-model="landingMode"
-        :locked="landingLocked"
+        :modelValue="landingMode"
+        :locked="false"
       />
     </div>
-    <!-- FUEL BAR -->
-    <FuelBar
-      :fuel="fuel"
-      :maxFuel="maxFuel"
-      :transferActive="fuelTransfer"
-      @toggle-transfer="toggleFuelTransfer"
-    />
+
+    <FuelBar :fuel="fuel" :maxFuel="maxFuel" :transferActive="fuelTransfer" />
   </div>
 </template>
 <style scoped>
