@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
+from .schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
 import orjson
 import uvloop
 import asyncio
@@ -36,7 +36,7 @@ async def broadcast(message: str, pool: set):
 @app.websocket("/ws/commands", name="commands")
 async def commands_websocket(websocket: WebSocket):
     '''
-    This websocket is used to receive commands from the frontend and broadcast them to all connected clients. The expected command format is as follows:
+    This websocket is used to receive commands from the plane and broadcast them to the frontend. The expected command format is as follows:
     Available commands:
     - Autopilot: { command: "ap", status: "on"/"off", altitude: number }
     - Autothrottle: { command: "at", status: "on"/"off", speed: number }

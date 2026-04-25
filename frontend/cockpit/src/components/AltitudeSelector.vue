@@ -3,54 +3,21 @@ import { computed } from "vue";
 import ApButton from "./ApButton.vue";
 
 const props = defineProps({
-  modelValue: Number, // <- mais padrão pra reutilização
-  min: {
-    type: Number,
-    default: 0,
-  },
-  max: {
-    type: Number,
-    default: 300,
-  },
-  label: {
-    type: String,
-    default: "ALT",
-  },
+  value: { type: Number, default: 0 },
+  min: { type: Number, default: 0 },
+  max: { type: Number, default: 300 },
+  label: { type: String, default: "ALT" },
+  buttonLabel: { type: String, default: "AP" },
   isActive: Boolean,
   locked: Boolean,
-  buttonLabel: {
-    type: String,
-    default: "AP",
-  },
 });
 
-const emit = defineEmits(["update:modelValue", "toggle"]);
-
-// SCROLL
-const onScroll = (e) => {
-  e.preventDefault();
-
-  const step = 10;
-
-  if (e.deltaY < 0) {
-    emit("update:modelValue", Math.min(props.max, props.modelValue + step));
-  } else {
-    emit("update:modelValue", Math.max(props.min, props.modelValue - step));
-  }
-};
-
-// POSIÇÃO DO INDICADOR
+// posição do indicador
 const indicatorPosition = computed(() => {
   const range = props.max - props.min;
-  const value = props.modelValue - props.min;
-  return 100 - (value / range) * 100;
+  const v = props.value - props.min;
+  return 100 - (v / range) * 100;
 });
-
-const handleClick = () => {
-  if (props.locked && !props.isActive) return;
-
-  emit("toggle");
-};
 </script>
 
 <template>
@@ -58,17 +25,12 @@ const handleClick = () => {
     <!-- DISPLAY -->
     <div class="display">
       <span class="label">{{ label }}</span>
-      <span class="value">{{ modelValue }}</span>
+      <span class="value">{{ value }}</span>
     </div>
 
-    <!-- SCROLL -->
-    <div
-      class="scroll"
-      @wheel="onScroll"
-      @mouseenter="(e) => e.currentTarget.focus()"
-      tabindex="0"
-    >
-      <!-- INDICADOR (AGORA BOTÃO REAL) -->
+    <!-- SCROLL (AGORA VISUAL APENAS) -->
+    <div class="scroll">
+      <!-- INDICADOR -->
       <div class="indicator" :style="{ top: indicatorPosition + '%' }">
         <div class="knob"></div>
       </div>
@@ -77,20 +39,15 @@ const handleClick = () => {
       <div class="tick" v-for="n in 20" :key="n"></div>
     </div>
 
-    <!-- BOTÃO -->
-    <ApButton
-      :label="buttonLabel"
-      :active="isActive"
-      :locked="locked"
-      @toggle="handleClick"
-    />
+    <!-- BOTÃO (SEM INTERAÇÃO) -->
+    <ApButton :label="buttonLabel" :active="isActive" :locked="locked" />
   </div>
 </template>
 
 <style scoped>
 .panel {
   height: 70vh;
-  width: 90px; /* 👈 mais fino */
+  width: 90px;
   background: linear-gradient(145deg, #2b2b2b, #1a1a1a);
   border: 2px solid #444;
   border-radius: 10px;
@@ -106,7 +63,7 @@ const handleClick = () => {
 
 /* DISPLAY */
 .display {
-  width: 60px; /* 👈 largura fixa */
+  width: 60px;
   background: black;
   color: #00ff9c;
   padding: 6px 8px;
@@ -132,7 +89,7 @@ const handleClick = () => {
 .scroll {
   position: relative;
   flex: 1;
-  width: 36px; /* 👈 mais fino */
+  width: 36px;
   margin: 15px 0;
   background: linear-gradient(180deg, #111, #222);
   border: 1px solid #555;
@@ -141,8 +98,6 @@ const handleClick = () => {
   flex-direction: column;
   justify-content: space-between;
   padding: 8px 0;
-  cursor: ns-resize;
-  outline: none;
 }
 
 /* TICKS */
@@ -160,7 +115,7 @@ const handleClick = () => {
   transform: translate(-50%, -50%);
 }
 
-/* KNOB REAL 🔥 */
+/* KNOB */
 .knob {
   width: 28px;
   height: 14px;
@@ -170,29 +125,5 @@ const handleClick = () => {
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.8),
     inset 0 0 4px #00ff9c55;
-}
-
-/* BOTÃO */
-.toggle {
-  width: 100%;
-  padding: 8px;
-  font-size: 11px;
-  background: linear-gradient(145deg, #3a3a3a, #1f1f1f);
-  border: 1px solid #555;
-  color: #999;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.toggle.locked {
-  color: #ff4444;
-  border-color: #ff4444;
-}
-
-.toggle.active {
-  color: #00ff9c;
-  border-color: #00ff9c;
-  box-shadow: 0 0 8px #00ff9c55;
 }
 </style>

@@ -25,7 +25,7 @@ onMounted(() => animate());
 
 // escala visual
 const pitchOffset = computed(() => displayPitch.value * 4);
-const rollRotation = computed(() => displayRoll.value * 2);
+const rollRotation = computed(() => displayRoll.value * 1.5);
 
 // linhas de pitch (de -90 até +90)
 const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);

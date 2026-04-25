@@ -118,11 +118,25 @@ const loop = () => {
   animationFrame = requestAnimationFrame(loop);
 };
 
+const handleCommand = (data) => {
+  if (data.schema !== "command") return;
+
+  if (data.command === "ap") {
+    apAltitude.value = data.altitude ?? apAltitude.value;
+    apActive.value = data.status === "on";
+  }
+
+  if (data.command === "at") {
+    atSpeed.value = data.speed ?? atSpeed.value;
+    atActive.value = data.status === "on";
+  }
+};
+
 // ================= LIFECYCLE =================
 
 onMounted(() => {
   connectTelemetry(handleTelemetry);
-  connectCommands();
+  connectCommands(handleCommand);
   animationFrame = requestAnimationFrame(loop);
 });
 
@@ -135,6 +149,12 @@ onUnmounted(() => {
 });
 
 // ================= ALTITUDE CONTROL =================
+const apAltitude = ref(0);
+const apActive = ref(false);
+
+const atSpeed = ref(0);
+const atActive = ref(false);
+
 const showNavMap = ref(false);
 
 const altitude = ref(140);
@@ -272,24 +292,23 @@ watch(fuelTransfer, (active) => {
     <!--<button class="zero-btn" @click="zeroTelemetry">ZERO TELEMETRY</button>-->
     <div class="left-panel">
       <AltitudeSelector
-        v-model="altitude"
-        :min="min"
-        :max="max"
-        :isActive="isActive"
-        :locked="autoPilotLocked"
-        :buttonLabel="'AP1'"
-        @toggle="toggle"
+        :value="apAltitude"
+        :min="0"
+        :max="300"
+        label="ALT"
+        buttonLabel="AP1"
+        :isActive="apActive"
+        :locked="apActive"
       />
 
       <AltitudeSelector
-        v-model="speed"
-        :min="40"
+        :value="atSpeed"
+        :min="0"
         :max="160"
         label="SPD"
-        :isActive="autoThrottleActive"
-        :locked="autoPilotLocked"
-        :buttonLabel="'A/THR'"
-        @toggle="toggleSpeed"
+        buttonLabel="A/THR"
+        :isActive="atActive"
+        :locked="atActive"
       />
 
       <!--NavButton :active="showNavMap" @toggle="showNavMap = !showNavMap" />
