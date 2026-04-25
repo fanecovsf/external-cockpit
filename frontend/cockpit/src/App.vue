@@ -103,6 +103,10 @@ const handleCommand = (data) => {
     case "ld":
       landingMode.value = data.status === "on";
       break;
+
+    case "ft":
+      fuelTransfer.value = data.status === "on";
+      break;
   }
 };
 
@@ -168,14 +172,6 @@ watch(landingMode, (active) => {
   sendCommand({
     schema: "command",
     command: "ld",
-    status: active ? "on" : "off",
-  });
-});
-
-watch(fuelTransfer, (active) => {
-  sendCommand({
-    schema: "command",
-    command: "ft",
     status: active ? "on" : "off",
   });
 });

@@ -7,15 +7,10 @@ const props = defineProps({
   transferActive: Boolean,
 });
 
-const emit = defineEmits(["toggle-transfer"]);
-
 const fuelPercent = computed(() => {
+  if (!props.maxFuel) return 0;
   return (props.fuel / props.maxFuel) * 100;
 });
-
-const toggle = () => {
-  emit("toggle-transfer");
-};
 </script>
 
 <template>
@@ -31,11 +26,7 @@ const toggle = () => {
       </div>
     </div>
 
-    <button
-      class="fuel-transfer"
-      :class="{ active: transferActive }"
-      @click="toggle"
-    >
+    <button class="fuel-transfer" :class="{ active: transferActive }">
       FUEL TRANSFER
     </button>
   </div>
@@ -92,7 +83,6 @@ const toggle = () => {
   color: #999;
   font-weight: bold;
   border-radius: 6px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -100,9 +90,5 @@ const toggle = () => {
   color: #00ff9c;
   border-color: #00ff9c;
   box-shadow: 0 0 10px #00ff9c55;
-}
-
-.fuel-transfer:active {
-  transform: translateY(2px);
 }
 </style>
