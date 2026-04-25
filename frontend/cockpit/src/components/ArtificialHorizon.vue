@@ -60,11 +60,16 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
         v-for="p in pitchLines"
         :key="p"
         class="pitch-line"
-        :style="{ top: `${100 - p * 1}%` }"
+        :style="{ top: `${50 - (p / 90) * 50}%` }"
       >
+        <span v-if="p % 20 === 0 && p !== 0" class="pitch-text left">
+          {{ p }}
+        </span>
+
         <div class="line-mark"></div>
-        <span v-if="p % 20 === 0 && p !== 0" class="pitch-text">
-          {{ Math.abs(p) }}
+
+        <span v-if="p % 20 === 0 && p !== 0" class="pitch-text right">
+          {{ p }}
         </span>
       </div>
 
@@ -152,7 +157,6 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
   box-shadow: 0 0 8px white;
 }
 
-/* linhas de pitch */
 .pitch-line {
   position: absolute;
   width: 100%;
@@ -169,9 +173,16 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
 
 .pitch-text {
   position: absolute;
-  right: 10px;
   font-size: 12px;
   color: white;
+}
+
+.pitch-text.left {
+  left: calc(50% - 75px);
+}
+
+.pitch-text.right {
+  right: calc(50% - 75px);
 }
 
 /* avião */
