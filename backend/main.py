@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from .schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
+from schemas import CommandSchema, AutoPilotAltitudeSchema, TelemetryDataSchema
 import orjson
 import uvloop
 import asyncio
