@@ -40,7 +40,7 @@ const displaySpeed = ref(0);
 
 const planeName = ref(null);
 
-// ================= COMMAND STATE (WS SOURCE OF TRUTH) =================
+// ================= COMMAND STATE =================
 
 const apAltitude = ref(0);
 const apActive = ref(false);
@@ -48,7 +48,7 @@ const apActive = ref(false);
 const atSpeed = ref(0);
 const atActive = ref(false);
 
-const takeOffState = ref("OFF"); // OFF | ARMED | ON | LOCKED
+const takeOffState = ref("OFF");
 const landingMode = ref(false);
 
 // ================= FUEL =================
@@ -64,7 +64,13 @@ const throttleRight = ref(0);
 const throttleLinked = ref(true);
 const autoThrottleActive = ref(false);
 
-// ================= TELEMETRY HANDLER =================
+// ================= RESET CONTROL =================
+
+const isResetting = ref(false);
+
+let animationFrame = null;
+
+// ================= TELEMETRY =================
 
 const handleTelemetry = (data) => {
   lastTelemetryTime.value = Date.now();
@@ -90,8 +96,6 @@ const handleThrottleTelemetry = (data) => {
   throttleRight.value = data.engine2 ?? throttleRight.value;
 };
 
-// ================= COMMAND HANDLER (WS -> STATE) =================
-
 const handleCommand = (data) => {
   if (data.schema !== "command") return;
 
@@ -107,9 +111,8 @@ const handleCommand = (data) => {
       break;
 
     case "to":
-      if (data.status === "arm") takeOffState.value = "ARMED";
-      else if (data.status === "on") takeOffState.value = "ON";
-      else takeOffState.value = "OFF";
+      takeOffState.value =
+        data.status === "arm" ? "ARMED" : data.status === "on" ? "ON" : "OFF";
       break;
 
     case "ld":
@@ -122,9 +125,7 @@ const handleCommand = (data) => {
   }
 };
 
-// ================= MAIN LOOP =================
-
-let animationFrame = null;
+// ================= LOOP =================
 
 const loop = () => {
   const now = Date.now();
@@ -140,53 +141,52 @@ const loop = () => {
 
   displayAltitude.value +=
     (telemetryAltitude.value - displayAltitude.value) * 0.08;
+
   displaySpeed.value += (telemetrySpeed.value - displaySpeed.value) * 0.1;
 
   animationFrame = requestAnimationFrame(loop);
 };
 
-// ================= COMMAND SENDERS =================
+// ================= RESET SYSTEM =================
 
-watch([apAltitude, apActive], ([active, alt]) => {
-  sendCommand({
-    schema: "command",
-    command: "ap",
-    status: active ? "on" : "off",
-    altitude: alt,
-  });
-});
+const resetSystem = async () => {
+  if (isResetting.value) return;
 
-watch([atSpeed, autoThrottleActive], ([active, spd]) => {
-  sendCommand({
-    schema: "command",
-    command: "at",
-    status: active ? "on" : "off",
-    speed: spd,
-  });
-});
+  isResetting.value = true;
 
-watch(takeOffState, (state) => {
-  let status =
-    state === "ARMED"
-      ? "arm"
-      : state === "ON" || state === "LOCKED"
-        ? "on"
-        : "off";
+  // 1. limpa UI imediatamente
+  planeName.value = null;
 
-  sendCommand({
-    schema: "command",
-    command: "to",
-    status,
-  });
-});
+  telemetryAltitude.value = 0;
+  telemetrySpeed.value = 0;
+  telemetryPitch.value = 0;
+  telemetryRoll.value = 0;
 
-watch(landingMode, (active) => {
-  sendCommand({
-    schema: "command",
-    command: "ld",
-    status: active ? "on" : "off",
-  });
-});
+  displayAltitude.value = 0;
+  displaySpeed.value = 0;
+
+  fuel.value = 0;
+
+  apActive.value = false;
+  atActive.value = false;
+  landingMode.value = false;
+  takeOffState.value = "OFF";
+
+  // 2. fecha conexões
+  disconnectTelemetry();
+  disconnectThrottleTelemetry();
+  disconnectCommands();
+
+  // 3. espera 3s
+  await new Promise((r) => setTimeout(r, 3000));
+
+  // 4. reconecta tudo
+  connectTelemetry(handleTelemetry);
+  connectThrottleTelemetry(handleThrottleTelemetry);
+  connectCommands(handleCommand);
+
+  isResetting.value = false;
+};
 
 // ================= LIFECYCLE =================
 
@@ -194,6 +194,7 @@ onMounted(() => {
   connectTelemetry(handleTelemetry);
   connectThrottleTelemetry(handleThrottleTelemetry);
   connectCommands(handleCommand);
+
   animationFrame = requestAnimationFrame(loop);
 });
 
@@ -201,12 +202,18 @@ onUnmounted(() => {
   disconnectTelemetry();
   disconnectThrottleTelemetry();
   disconnectCommands();
+
   cancelAnimationFrame(animationFrame);
 });
 </script>
 
 <template>
   <div class="cockpit">
+    <!-- RESET BUTTON -->
+    <button class="reset-btn" @click="resetSystem" :disabled="isResetting">
+      RESET
+    </button>
+
     <PlaneDisplay :plane="planeName" />
 
     <div class="left-panel">
@@ -287,6 +294,7 @@ onUnmounted(() => {
     <FuelBar :fuel="fuel" :maxFuel="maxFuel" :transferActive="fuelTransfer" />
   </div>
 </template>
+
 <style scoped>
 .cockpit {
   height: 100vh;
@@ -441,5 +449,34 @@ onUnmounted(() => {
   transform: translateY(-50%);
   display: flex;
   align-items: center;
+}
+
+/* ===== RESET BUTTON ===== */
+.reset-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+
+  padding: 8px 12px;
+  font-weight: bold;
+
+  background: linear-gradient(145deg, #2a2a2a, #111);
+  border: 1px solid #666;
+  color: #ff5555;
+
+  border-radius: 6px;
+  cursor: pointer;
+
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+}
+
+.reset-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>
