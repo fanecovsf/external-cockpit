@@ -24,8 +24,8 @@ function animate() {
 onMounted(() => animate());
 
 // escala visual
-const pitchOffset = computed(() => displayPitch.value * 140);
-const rollRotation = computed(() => displayRoll.value * 180);
+const pitchOffset = computed(() => displayPitch.value * 4);
+const rollRotation = computed(() => displayRoll.value * 2);
 
 // linhas de pitch (de -90 até +90)
 const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
@@ -49,7 +49,7 @@ const pitchLines = Array.from({ length: 19 }, (_, i) => (i - 9) * 10);
     <div
       class="horizon-inner"
       :style="{
-        transform: `rotate(${rollRotation}deg) translateY(${pitchOffset}px)`,
+        transform: `translateY(${pitchOffset}px) rotate(${rollRotation}deg)`,
       }"
     >
       <div class="sky"></div>
